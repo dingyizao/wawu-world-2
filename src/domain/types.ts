@@ -37,17 +37,17 @@ export type AnchorStatus = "locked" | "discovered" | "explored";
 export type MbtiFamily = "analyst" | "diplomat" | "sentinel" | "explorer";
 
 export interface MbtiProfile {
-  type: MbtiType;
-  family: MbtiFamily;
-  label: string;
-  description: string;
-  personaTags: readonly string[];
-  poiBias: readonly string[];
-  initiative: number;
-  expression: number;
-  autonomy: number;
-  portraitAssetId: string;
-  walkAssetId: string;
+  readonly type: MbtiType;
+  readonly family: MbtiFamily;
+  readonly label: string;
+  readonly description: string;
+  readonly personaTags: readonly string[];
+  readonly poiBias: readonly string[];
+  readonly initiative: number;
+  readonly expression: number;
+  readonly autonomy: number;
+  readonly portraitAssetId: string;
+  readonly walkAssetId: string;
 }
 
 export interface UserProfile {

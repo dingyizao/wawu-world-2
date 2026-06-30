@@ -37,7 +37,7 @@ describe("initial state", () => {
   });
 
   it("contains only the version one state fields", () => {
-    expect(Object.keys(createInitialState("user-1"))).toEqual([
+    expect(Object.keys(createInitialState("user-1")).sort()).toEqual([
       "schemaVersion",
       "revision",
       "user",
@@ -50,6 +50,6 @@ describe("initial state", () => {
       "inventory",
       "reports",
       "processedActionIds",
-    ]);
+    ].sort());
   });
 });

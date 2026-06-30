@@ -22,6 +22,25 @@ const MBTI_TYPES = [
   "ESFP",
 ] as const satisfies readonly MbtiType[];
 
+const MBTI_LABELS: Record<MbtiType, string> = {
+  INTJ: "策划者",
+  INTP: "解谜者",
+  ENTJ: "领航者",
+  ENTP: "点子王",
+  INFJ: "倾听者",
+  INFP: "造梦者",
+  ENFJ: "共鸣者",
+  ENFP: "追光者",
+  ISTJ: "记录员",
+  ISFJ: "守护者",
+  ESTJ: "执行官",
+  ESFJ: "暖场者",
+  ISTP: "实干家",
+  ISFP: "漫游者",
+  ESTP: "行动派",
+  ESFP: "气氛家",
+};
+
 describe("MBTI catalog", () => {
   it("defines exactly 16 unique MBTI types", () => {
     expect(MBTI_CATALOG).toHaveLength(16);
@@ -37,13 +56,39 @@ describe("MBTI catalog", () => {
       expect(profile.family).toBeTruthy();
       expect(profile.label).toMatch(/[\u3400-\u9fff]/);
       expect(profile.description).toMatch(/[\u3400-\u9fff]/);
-      expect(profile.personaTags.length).toBeGreaterThan(0);
+      expect(profile.personaTags.length).toBeGreaterThanOrEqual(3);
+      expect(profile.personaTags.length).toBeLessThanOrEqual(4);
       expect(profile.poiBias.length).toBeGreaterThan(0);
-      expect(Number.isFinite(profile.initiative)).toBe(true);
-      expect(Number.isFinite(profile.expression)).toBe(true);
-      expect(Number.isFinite(profile.autonomy)).toBe(true);
+      for (const tuning of [
+        profile.initiative,
+        profile.expression,
+        profile.autonomy,
+      ]) {
+        expect(Number.isFinite(tuning)).toBe(true);
+        expect(tuning).toBeGreaterThanOrEqual(0);
+        expect(tuning).toBeLessThanOrEqual(1);
+      }
       expect(profile.portraitAssetId).toBe(`avatar-${type}-portrait`);
       expect(profile.walkAssetId).toBe(`avatar-${type}-walk`);
+    }
+  });
+
+  it("uses the approved avatar labels", () => {
+    expect(
+      Object.fromEntries(
+        MBTI_CATALOG.map((profile) => [profile.type, profile.label]),
+      ),
+    ).toEqual(MBTI_LABELS);
+  });
+
+  it("exposes immutable shared profiles", () => {
+    expect(Object.isFrozen(MBTI_CATALOG)).toBe(true);
+
+    for (const profile of MBTI_CATALOG) {
+      expect(Object.isFrozen(profile)).toBe(true);
+      expect(Object.isFrozen(profile.personaTags)).toBe(true);
+      expect(Object.isFrozen(profile.poiBias)).toBe(true);
+      expect(getMbtiProfile(profile.type)).toBe(profile);
     }
   });
 

@@ -8,18 +8,20 @@ type ProfileDefinition = Omit<
 function defineProfile(profile: ProfileDefinition): MbtiProfile {
   const type = profile.type.toLowerCase();
 
-  return {
+  return Object.freeze({
     ...profile,
+    personaTags: Object.freeze([...profile.personaTags]),
+    poiBias: Object.freeze([...profile.poiBias]),
     portraitAssetId: `avatar-${type}-portrait`,
     walkAssetId: `avatar-${type}-walk`,
-  };
+  });
 }
 
-export const MBTI_CATALOG: readonly MbtiProfile[] = [
+export const MBTI_CATALOG: readonly MbtiProfile[] = Object.freeze([
   defineProfile({
     type: "INTJ",
     family: "analyst",
-    label: "建筑师",
+    label: "策划者",
     description: "善于从城市线索中发现结构与长期脉络。",
     personaTags: ["远见", "独立", "善于规划"],
     poiBias: ["architecture", "history", "hidden-patterns"],
@@ -30,7 +32,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "INTP",
     family: "analyst",
-    label: "逻辑学家",
+    label: "解谜者",
     description: "喜欢追问原理，并把偶遇变成有趣的假设。",
     personaTags: ["好奇", "理性", "开放探索"],
     poiBias: ["science", "oddities", "bookstores"],
@@ -41,7 +43,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ENTJ",
     family: "analyst",
-    label: "指挥官",
+    label: "领航者",
     description: "擅长设定目标，带着伙伴高效抵达城市地标。",
     personaTags: ["果断", "目标感", "组织力"],
     poiBias: ["landmarks", "challenges", "city-vistas"],
@@ -52,7 +54,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ENTP",
     family: "analyst",
-    label: "辩论家",
+    label: "点子王",
     description: "热衷新鲜观点，总能为熟悉街道提出另一种走法。",
     personaTags: ["机敏", "创新", "爱讨论"],
     poiBias: ["novelty", "interactive", "creative-spaces"],
@@ -63,7 +65,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "INFJ",
     family: "diplomat",
-    label: "提倡者",
+    label: "倾听者",
     description: "关注地点背后的意义，也在意同行者的感受。",
     personaTags: ["洞察", "温柔", "有信念"],
     poiBias: ["quiet", "culture", "memorials"],
@@ -74,7 +76,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "INFP",
     family: "diplomat",
-    label: "调停者",
+    label: "造梦者",
     description: "容易被自然、故事和细小而真诚的瞬间打动。",
     personaTags: ["浪漫", "共情", "重视意义"],
     poiBias: ["nature", "stories", "independent-art"],
@@ -85,7 +87,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ENFJ",
     family: "diplomat",
-    label: "主人公",
+    label: "共鸣者",
     description: "主动照顾同行节奏，乐于连接人与城市故事。",
     personaTags: ["热忱", "鼓舞", "善于联结"],
     poiBias: ["community", "culture", "shared-experiences"],
@@ -96,7 +98,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ENFP",
     family: "diplomat",
-    label: "竞选者",
+    label: "追光者",
     description: "追随灵感和意外相遇，让每次散步都有新发现。",
     personaTags: ["活力", "想象力", "热爱惊喜"],
     poiBias: ["unexpected", "social", "nature"],
@@ -107,7 +109,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ISTJ",
     family: "sentinel",
-    label: "物流师",
+    label: "记录员",
     description: "重视可靠事实，愿意循着历史记录稳步探索。",
     personaTags: ["可靠", "严谨", "重视传统"],
     poiBias: ["heritage", "order", "museums"],
@@ -118,7 +120,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ISFJ",
     family: "sentinel",
-    label: "守卫者",
+    label: "守护者",
     description: "记得同行者的偏好，也珍惜街坊日常的温度。",
     personaTags: ["体贴", "细致", "忠诚"],
     poiBias: ["neighborhoods", "tradition", "quiet-corners"],
@@ -129,7 +131,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ESTJ",
     family: "sentinel",
-    label: "总经理",
+    label: "执行官",
     description: "偏爱清晰路线和明确成果，行动直接而有条理。",
     personaTags: ["务实", "高效", "有秩序"],
     poiBias: ["landmarks", "civic", "route-goals"],
@@ -140,7 +142,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ESFJ",
     family: "sentinel",
-    label: "执政官",
+    label: "暖场者",
     description: "善于营造同行氛围，关注热闹而有人情味的地方。",
     personaTags: ["友善", "周到", "重视陪伴"],
     poiBias: ["community", "food", "local-events"],
@@ -151,7 +153,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ISTP",
     family: "explorer",
-    label: "鉴赏家",
+    label: "实干家",
     description: "通过观察和动手理解城市，钟爱精巧结构与工艺。",
     personaTags: ["冷静", "灵活", "爱实践"],
     poiBias: ["craft", "industrial", "mechanical-details"],
@@ -162,7 +164,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ISFP",
     family: "explorer",
-    label: "探险家",
+    label: "漫游者",
     description: "对色彩、声音和自然细节敏锐，享受随性漫游。",
     personaTags: ["敏锐", "随和", "审美细腻"],
     poiBias: ["art", "nature", "sensory-details"],
@@ -173,7 +175,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ESTP",
     family: "explorer",
-    label: "企业家",
+    label: "行动派",
     description: "喜欢即时行动和现场体验，把路线走成一场挑战。",
     personaTags: ["大胆", "敏捷", "享受行动"],
     poiBias: ["action", "nightlife", "challenges"],
@@ -184,7 +186,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
   defineProfile({
     type: "ESFP",
     family: "explorer",
-    label: "表演者",
+    label: "气氛家",
     description: "善于捕捉热烈气氛，愿意分享眼前的快乐与美感。",
     personaTags: ["开朗", "生动", "享受当下"],
     poiBias: ["food", "performance", "social"],
@@ -192,7 +194,7 @@ export const MBTI_CATALOG: readonly MbtiProfile[] = [
     expression: 0.94,
     autonomy: 0.64,
   }),
-];
+]);
 
 const PROFILES_BY_TYPE = Object.fromEntries(
   MBTI_CATALOG.map((profile) => [profile.type, profile]),
