@@ -76,7 +76,7 @@ export function applyGameAction(
         : [
             ...state.inventory,
             {
-              id: `inventory:${action.id}:${rewardItemId}`,
+              id: `inventory:${action.id}`,
               definitionId: rewardItemId,
               sourceActionId: action.id,
             },

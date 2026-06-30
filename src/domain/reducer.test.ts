@@ -116,7 +116,7 @@ describe("memory shard reducer", () => {
     ]);
     expect(first.inventory).toEqual([
       {
-        id: "inventory:spend-1:old-radio",
+        id: "inventory:spend-1",
         definitionId: "old-radio",
         sourceActionId: "spend-1",
       },
@@ -150,16 +150,45 @@ describe("memory shard reducer", () => {
 
     expect(second.inventory).toEqual([
       {
-        id: "inventory:spend-a:old-radio",
+        id: "inventory:spend-a",
         definitionId: "old-radio",
         sourceActionId: "spend-a",
       },
       {
-        id: "inventory:spend-b:old-radio",
+        id: "inventory:spend-b",
         definitionId: "old-radio",
         sourceActionId: "spend-b",
       },
     ]);
+  });
+
+  it("keeps delimiter-bearing action and reward pairs collision-free", () => {
+    const first = applyGameAction(readyState(2), {
+      id: "action:a",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:00:00.000Z",
+      payload: {
+        actionType: "explore",
+        shardCost: 1,
+        rewardItemId: "b",
+      },
+    });
+    const second = applyGameAction(first, {
+      id: "action",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:01:00.000Z",
+      payload: {
+        actionType: "learn",
+        shardCost: 1,
+        rewardItemId: "a:b",
+      },
+    });
+
+    expect(second.inventory.map(({ id }) => id)).toEqual([
+      "inventory:action:a",
+      "inventory:action",
+    ]);
+    expect(new Set(second.inventory.map(({ id }) => id)).size).toBe(2);
   });
 
   it("processes a zero-cost reward once without a zero-change ledger entry", () => {
@@ -181,7 +210,7 @@ describe("memory shard reducer", () => {
     expect(first.ledger).toEqual([]);
     expect(first.inventory).toEqual([
       {
-        id: "inventory:spend-free:care-note",
+        id: "inventory:spend-free",
         definitionId: "care-note",
         sourceActionId: "spend-free",
       },
