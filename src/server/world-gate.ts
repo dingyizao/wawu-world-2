@@ -19,3 +19,19 @@ export function isGateBypass(pathname: string): boolean {
     pathname.startsWith("/_next/image")
   );
 }
+
+export type RequestGateDecision = "allow" | "redirect" | "unauthorized";
+
+export function requestGateDecision(
+  pathname: string,
+  hasSession: boolean,
+  onboardingComplete: boolean,
+): RequestGateDecision {
+  if (
+    isGateBypass(pathname) ||
+    (hasSession && onboardingComplete)
+  ) {
+    return "allow";
+  }
+  return pathname.startsWith("/api/") ? "unauthorized" : "redirect";
+}
