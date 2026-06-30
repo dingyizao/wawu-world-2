@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "sharedStyle": "Warm Chinese storybook illustration with detailed ink linework and subtle rice-paper texture, modern Chengdu guofeng design, muted teal, cinnabar red, memory gold, warm cream and dark brown palette, tactile natural materials, clean silhouette, gentle optimistic mood, polished game art, no text, no logo, no watermark.",
+  "groups": {
+    "avatars": {
+      "types": ["INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP", "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"],
+      "variants": ["portrait", "walk"]
+    },
+    "map": [
+      "memory-shard-locked", "memory-shard-glow", "memory-shard-collected", "memory-shard-spent",
+      "anchor-teahouse", "anchor-old-shop", "anchor-alley", "anchor-food", "anchor-park", "anchor-temple", "anchor-bridge", "anchor-market", "anchor-photo", "anchor-culture",
+      "checkin-stamp", "route-badge", "status-discovered", "status-explored", "status-locked", "companion-suggestion", "walk-start", "walk-finish", "weekly-challenge", "postcard-marker"
+    ],
+    "items": [
+      "bamboo-chair", "enamel-bowl", "old-radio", "red-shop-sign", "tea-set", "paper-lantern", "folding-fan", "embroidered-bag", "raincoat", "walking-shoes",
+      "camera", "postcard", "bus-ticket", "alley-map", "recipe-scroll", "dialect-bell", "memory-badge", "travel-pass", "photo-album", "wooden-stool",
+      "tea-token", "spice-jar", "umbrella", "opera-mask", "bamboo-basket", "cassette-tape", "stamp-book", "rabbit-charm", "window-flower", "street-sign"
+    ],
+    "scenes": [
+      "onboarding-meet", "onboarding-personality", "onboarding-first-walk", "fallback-chengdu-map", "walk-recap", "daily-report", "empty-storage", "amap-error", "coze-fallback", "creation-desk"
+    ]
+  }
+}
+
