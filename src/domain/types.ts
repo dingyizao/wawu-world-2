@@ -86,7 +86,7 @@ export interface CityAnchor {
 
 export interface ShardLedgerEntry {
   id: string;
-  amount: number;
+  change: number;
   reason: string;
   actionId: string;
   createdAt: string;
