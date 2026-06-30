@@ -15,6 +15,7 @@ export function isGateBypass(pathname: string): boolean {
     pathname.startsWith("/onboarding/") ||
     pathname === "/api/health" ||
     pathname.startsWith("/api/onboarding/") ||
+    pathname.startsWith("/assets/") ||
     pathname.startsWith("/_next/static/") ||
     pathname.startsWith("/_next/image")
   );

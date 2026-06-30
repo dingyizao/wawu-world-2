@@ -4,6 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "娃屋世界 2",
+  description: "和 AI 分身一起走进城市，收集属于你们的记忆。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

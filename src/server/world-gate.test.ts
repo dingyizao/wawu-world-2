@@ -10,6 +10,17 @@ describe("requestGateDecision", () => {
     ).toBe("allow");
   });
 
+  it("allows public onboarding assets without opening protected pages", () => {
+    expect(
+      requestGateDecision(
+        "/assets/generated/scenes/onboarding-meet.png",
+        false,
+        false,
+      ),
+    ).toBe("allow");
+    expect(requestGateDecision("/map", false, false)).toBe("redirect");
+  });
+
   it("returns unauthorized for protected APIs without a completed session", () => {
     expect(requestGateDecision("/api/state", false, false)).toBe(
       "unauthorized",
