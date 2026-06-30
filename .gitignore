@@ -10,4 +10,5 @@ coverage/
 tmp/
 output/
 .superpowers/
+.worktrees/
 *.log
