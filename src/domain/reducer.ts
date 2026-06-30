@@ -63,16 +63,23 @@ export function applyGameAction(
     wallet: {
       memoryShards: state.wallet.memoryShards - shardCost,
     },
-    ledger: [
-      ...state.ledger,
-      ledgerEntry(action, -shardCost, "agent_action"),
-    ],
+    ledger:
+      shardCost > 0
+        ? [
+            ...state.ledger,
+            ledgerEntry(action, -shardCost, "agent_action"),
+          ]
+        : state.ledger,
     inventory:
       rewardItemId === undefined
         ? state.inventory
         : [
             ...state.inventory,
-            { id: rewardItemId, sourceActionId: action.id },
+            {
+              id: `inventory:${action.id}:${rewardItemId}`,
+              definitionId: rewardItemId,
+              sourceActionId: action.id,
+            },
           ],
     processedActionIds: [...state.processedActionIds, action.id],
   };

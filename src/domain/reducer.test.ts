@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import type { GameAction } from "./actions";
 import { applyGameAction } from "./reducer";
 import { createInitialState } from "./state";
-import type { GameStateV1 } from "./types";
+import type { GameStateV1, ShardLedgerEntry } from "./types";
 
 function readyState(memoryShards: number): GameStateV1 {
   return {
@@ -20,6 +20,12 @@ const claimAction = {
 } as const satisfies GameAction;
 
 describe("memory shard reducer", () => {
+  it("limits ledger reasons to current shard operations", () => {
+    expectTypeOf<ShardLedgerEntry["reason"]>().toEqualTypeOf<
+      "walk" | "agent_action"
+    >();
+  });
+
   it("claims walking shards once and records the change", () => {
     const initial = readyState(0);
 
@@ -109,9 +115,78 @@ describe("memory shard reducer", () => {
       },
     ]);
     expect(first.inventory).toEqual([
-      { id: "old-radio", sourceActionId: "spend-1" },
+      {
+        id: "inventory:spend-1:old-radio",
+        definitionId: "old-radio",
+        sourceActionId: "spend-1",
+      },
     ]);
     expect(first.processedActionIds).toEqual(["spend-1"]);
+    expect(first.revision).toBe(1);
+    expect(second).toBe(first);
+  });
+
+  it("creates distinct reward instances for different actions", () => {
+    const first = applyGameAction(readyState(20), {
+      id: "spend-a",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:00:00.000Z",
+      payload: {
+        actionType: "explore",
+        shardCost: 1,
+        rewardItemId: "old-radio",
+      },
+    });
+    const second = applyGameAction(first, {
+      id: "spend-b",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:01:00.000Z",
+      payload: {
+        actionType: "learn",
+        shardCost: 1,
+        rewardItemId: "old-radio",
+      },
+    });
+
+    expect(second.inventory).toEqual([
+      {
+        id: "inventory:spend-a:old-radio",
+        definitionId: "old-radio",
+        sourceActionId: "spend-a",
+      },
+      {
+        id: "inventory:spend-b:old-radio",
+        definitionId: "old-radio",
+        sourceActionId: "spend-b",
+      },
+    ]);
+  });
+
+  it("processes a zero-cost reward once without a zero-change ledger entry", () => {
+    const action = {
+      id: "spend-free",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:00:00.000Z",
+      payload: {
+        actionType: "offline-care",
+        shardCost: 0,
+        rewardItemId: "care-note",
+      },
+    } as const satisfies GameAction;
+
+    const first = applyGameAction(readyState(0), action);
+    const second = applyGameAction(first, action);
+
+    expect(first.wallet.memoryShards).toBe(0);
+    expect(first.ledger).toEqual([]);
+    expect(first.inventory).toEqual([
+      {
+        id: "inventory:spend-free:care-note",
+        definitionId: "care-note",
+        sourceActionId: "spend-free",
+      },
+    ]);
+    expect(first.processedActionIds).toEqual(["spend-free"]);
     expect(first.revision).toBe(1);
     expect(second).toBe(first);
   });
@@ -185,6 +260,29 @@ describe("memory shard reducer", () => {
     expect(result).not.toBe(initial);
     expect(result.wallet).not.toBe(initial.wallet);
     expect(result.ledger).not.toBe(initial.ledger);
+    expect(result.processedActionIds).not.toBe(initial.processedActionIds);
+    expect(initial).toEqual(snapshot);
+  });
+
+  it("spends without mutating or aliasing changed input branches", () => {
+    const initial = readyState(10);
+    const snapshot = structuredClone(initial);
+
+    const result = applyGameAction(initial, {
+      id: "spend-immutable",
+      type: "COMPLETE_AGENT_ACTION",
+      createdAt: "2026-06-30T11:00:00.000Z",
+      payload: {
+        actionType: "create",
+        shardCost: 3,
+        rewardItemId: "sketch",
+      },
+    });
+
+    expect(result).not.toBe(initial);
+    expect(result.wallet).not.toBe(initial.wallet);
+    expect(result.ledger).not.toBe(initial.ledger);
+    expect(result.inventory).not.toBe(initial.inventory);
     expect(result.processedActionIds).not.toBe(initial.processedActionIds);
     expect(initial).toEqual(snapshot);
   });

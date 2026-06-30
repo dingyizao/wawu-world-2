@@ -87,13 +87,14 @@ export interface CityAnchor {
 export interface ShardLedgerEntry {
   id: string;
   change: number;
-  reason: string;
+  reason: "walk" | "agent_action";
   actionId: string;
   createdAt: string;
 }
 
 export interface InventoryItem {
   id: string;
+  definitionId: string;
   sourceActionId: string;
 }
 
