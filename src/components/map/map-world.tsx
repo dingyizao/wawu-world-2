@@ -36,6 +36,7 @@ export function MapWorld({
         <AmapSurface
           amapJsKey={amapJsKey}
           companionName={companionName}
+          onWalletChange={setMemoryShards}
           walkAssetPath={walkAssetPath}
         />
         <WalkCompanion

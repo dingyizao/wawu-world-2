@@ -600,10 +600,29 @@ p {
 .map-location-label {
   background: rgba(247, 239, 217, 0.92);
   border-radius: 12px;
-  bottom: 12px;
+  bottom: 46px;
   color: var(--muted);
   font-family: sans-serif;
   font-size: 11px;
+  left: 50%;
+  max-width: calc(100% - 24px);
+  padding: 7px 11px;
+  position: absolute;
+  text-align: center;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.map-shard-label {
+  background: rgba(201, 154, 69, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 12px;
+  bottom: 12px;
+  color: #fff8e9;
+  font-family: sans-serif;
+  font-size: 11px;
+  font-weight: 800;
   left: 50%;
   max-width: calc(100% - 24px);
   padding: 7px 11px;
@@ -633,6 +652,35 @@ p {
   height: 100%;
   object-fit: contain;
   width: 100%;
+}
+
+.amap-shard-marker {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  filter: drop-shadow(0 8px 8px rgba(44, 38, 32, 0.28));
+  padding: 0;
+  position: relative;
+}
+
+.amap-shard-marker img {
+  height: 54px;
+  width: 54px;
+}
+
+.amap-shard-marker span {
+  background: var(--cinnabar);
+  border: 2px solid #fff8e9;
+  border-radius: 999px;
+  color: white;
+  font-family: sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  margin-top: -14px;
+  padding: 3px 7px;
 }
 
 .fallback-map__scene {
@@ -914,6 +962,87 @@ p {
   font-size: clamp(26px, 7vw, 42px);
 }
 
+.cabinet-window-board {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.cabinet-window {
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(255, 251, 238, 0.94), rgba(231, 213, 173, 0.8));
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 14px 32px rgba(57, 40, 23, 0.12);
+  color: var(--ink);
+  display: grid;
+  gap: 5px;
+  min-height: 184px;
+  overflow: hidden;
+  padding: 12px;
+  position: relative;
+  text-align: left;
+}
+
+.cabinet-window[aria-pressed="true"] {
+  border-color: var(--teal);
+  box-shadow: 0 16px 42px rgba(53, 111, 106, 0.24);
+  outline: 3px solid rgba(53, 111, 106, 0.12);
+}
+
+.cabinet-window span {
+  color: var(--teal-dark);
+  font-weight: 900;
+}
+
+.cabinet-window strong {
+  color: var(--cinnabar);
+  font-family: sans-serif;
+  font-size: 28px;
+}
+
+.cabinet-window img {
+  bottom: -12px;
+  height: auto;
+  opacity: 0.94;
+  position: absolute;
+  right: -10px;
+  width: 104px;
+}
+
+.cabinet-detail-window {
+  align-items: center;
+  background: rgba(255, 251, 238, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr 150px;
+  margin-bottom: 14px;
+  min-height: 172px;
+  padding: 18px;
+}
+
+.cabinet-detail-window h2 {
+  font-size: 24px;
+}
+
+.cabinet-detail-window p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+
+.cabinet-detail-window img {
+  background: var(--paper-deep);
+  border-radius: 20px;
+  height: auto;
+  width: 100%;
+}
+
 .cabinet-filters {
   display: grid;
   gap: 7px;
@@ -986,6 +1115,20 @@ p {
   border-radius: 24px;
   height: auto;
   width: 100%;
+}
+
+@media (max-width: 640px) {
+  .cabinet-window-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cabinet-detail-window {
+    grid-template-columns: 1fr;
+  }
+
+  .cabinet-detail-window img {
+    max-width: 160px;
+  }
 }
 
 .agent-profile-card {

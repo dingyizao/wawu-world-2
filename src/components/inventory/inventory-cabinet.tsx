@@ -4,39 +4,86 @@ import Image from "next/image";
 import { useState } from "react";
 
 import {
+  CABINET_CATEGORIES,
   type ItemCategory,
-  type ItemDefinition,
+  type InventoryDisplayItem,
+  cabinetWindows,
   itemProvenance,
 } from "../../domain/inventory";
-
-const FILTERS: Array<{ id: ItemCategory; label: string }> = [
-  { id: "furniture", label: "摆件" },
-  { id: "clothing", label: "衣物" },
-  { id: "souvenir", label: "纪念" },
-  { id: "postcard", label: "明信片" },
-];
 
 export function InventoryCabinet({
   items,
 }: {
-  items: Array<ItemDefinition & { instanceId: string; sourceActionId: string }>;
+  items: InventoryDisplayItem[];
 }) {
   const [category, setCategory] = useState<ItemCategory>(
     items[0]?.category ?? "furniture",
   );
+  const windows = cabinetWindows(items);
+  const activeWindow = windows.find((window) => window.category === category);
   const visible = items.filter((item) => item.category === category);
 
   return (
     <>
+      <section className="cabinet-window-board" aria-label="四类储物展示窗">
+        {windows.map((window) => (
+          <button
+            aria-pressed={category === window.category}
+            className="cabinet-window"
+            key={window.category}
+            onClick={() => setCategory(window.category)}
+            type="button"
+          >
+            <span>{window.label}</span>
+            <strong>{window.count}</strong>
+            {window.featuredItem ? (
+              <Image
+                alt=""
+                height={112}
+                src={window.featuredItem.assetPath}
+                width={112}
+              />
+            ) : (
+              <Image
+                alt=""
+                height={112}
+                src="/assets/generated/scenes/empty-storage.png"
+                width={112}
+              />
+            )}
+          </button>
+        ))}
+      </section>
+      {activeWindow ? (
+        <section className="cabinet-detail-window" aria-live="polite">
+          <div>
+            <span className="eyebrow">{activeWindow.label}</span>
+            <h2>
+              {activeWindow.count > 0
+                ? `已收纳 ${activeWindow.count} 件`
+                : "这一格等待第一件藏品"}
+            </h2>
+            <p>{activeWindow.description}</p>
+          </div>
+          {activeWindow.featuredItem ? (
+            <Image
+              alt=""
+              height={180}
+              src={activeWindow.featuredItem.assetPath}
+              width={180}
+            />
+          ) : null}
+        </section>
+      ) : null}
       <div className="cabinet-filters">
-        {FILTERS.map((filter) => (
+        {CABINET_CATEGORIES.map((filter) => (
           <button
             aria-pressed={category === filter.id}
             key={filter.id}
             onClick={() => setCategory(filter.id)}
             type="button"
           >
-            {filter.label}
+            {filter.shortLabel}
           </button>
         ))}
       </div>

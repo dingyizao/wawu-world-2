@@ -8,6 +8,51 @@ export type ItemDefinition = {
   assetPath: string;
 };
 
+export type InventoryDisplayItem = ItemDefinition & {
+  instanceId: string;
+  sourceActionId: string;
+};
+
+export type CabinetWindow = {
+  category: ItemCategory;
+  label: string;
+  description: string;
+  count: number;
+  featuredItem: InventoryDisplayItem | null;
+};
+
+export const CABINET_CATEGORIES: Array<{
+  id: ItemCategory;
+  label: string;
+  shortLabel: string;
+  description: string;
+}> = [
+  {
+    id: "furniture",
+    label: "摆件柜",
+    shortLabel: "摆件",
+    description: "茶具、椅凳、灯笼和街巷里带回来的小型陈设。",
+  },
+  {
+    id: "clothing",
+    label: "衣装柜",
+    shortLabel: "衣物",
+    description: "雨衣、鞋、伞和可随身佩戴的同行装束。",
+  },
+  {
+    id: "souvenir",
+    label: "纪念柜",
+    shortLabel: "纪念",
+    description: "票根、相机、铃铛和真实或训练同行留下的城市信物。",
+  },
+  {
+    id: "postcard",
+    label: "明信片夹",
+    shortLabel: "明信片",
+    description: "地图、相册、食谱和适合翻看的纸面记忆。",
+  },
+];
+
 const definitions: Array<[string, string, ItemCategory, ItemDefinition["rarity"]]> = [
   ["alley-map", "巷陌手绘图", "postcard", "珍藏"],
   ["bamboo-basket", "竹编小篮", "furniture", "寻常"],
@@ -53,6 +98,19 @@ export const ITEM_CATALOG: ItemDefinition[] = definitions.map(
 
 export function itemsByCategory(category: ItemCategory) {
   return ITEM_CATALOG.filter((item) => item.category === category);
+}
+
+export function cabinetWindows(items: InventoryDisplayItem[]): CabinetWindow[] {
+  return CABINET_CATEGORIES.map((category) => {
+    const categoryItems = items.filter((item) => item.category === category.id);
+    return {
+      category: category.id,
+      label: category.label,
+      description: category.description,
+      count: categoryItems.length,
+      featuredItem: categoryItems[0] ?? null,
+    };
+  });
 }
 
 export function itemDefinition(id: string) {

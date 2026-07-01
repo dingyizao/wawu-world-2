@@ -22,6 +22,21 @@ test("new player completes the training loop into storage", async ({ page }) => 
     (await page.context().cookies()).map(({ name }) => name),
   ).toEqual(expect.arrayContaining(["wawu_session", "wawu_onboarding"]));
   await expect(page).toHaveURL(/map/);
+  await expect(page.getByText("地图上会随机刷新可拾取的记忆碎片")).toBeVisible();
+  const shardClaim = await page.evaluate(async () => {
+    const response = await fetch("/api/map/shards/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ shardId: "e2e-visible-shard", amount: 2 }),
+    });
+    return { ok: response.ok, status: response.status, body: await response.text() };
+  });
+  if (!shardClaim.ok) {
+    throw new Error(`map shard claim failed: ${JSON.stringify(shardClaim)}`);
+  }
+  expect(shardClaim.status).toBe(200);
+  await page.reload();
+  await expect(page.getByLabel("记忆碎片余额")).toContainText("2");
   await page.getByRole("button", { name: "开始训练同行" }).click();
   await page.getByRole("button", { name: /听听.*发现了什么/ }).click();
   await expect(page.getByText(/预置结果|Coze 原生模型生成/)).toBeVisible();
@@ -30,6 +45,10 @@ test("new player completes the training loop into storage", async ({ page }) => 
   await page.getByRole("link", { name: "打开我的娃屋" }).click();
 
   await expect(page).toHaveURL(/house/);
+  await expect(page.getByRole("button", { name: /摆件柜/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /衣装柜/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /纪念柜/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /明信片夹/ })).toBeVisible();
   await expect(page.getByText("训练所得")).toBeVisible();
   await expect(page.getByText("一只装着共同记忆的储物柜")).toBeVisible();
 });

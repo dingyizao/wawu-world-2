@@ -76,6 +76,30 @@ describe("memory shard reducer", () => {
     expect(second).toBe(first);
   });
 
+  it("claims a map memory shard once and records it as exploration income", () => {
+    const action = {
+      id: "map-shard:shard-first-0",
+      type: "CLAIM_MAP_SHARD",
+      createdAt: "2026-07-01T02:00:00.000Z",
+      payload: { shardId: "shard-first-0", amount: 3 },
+    } as const satisfies GameAction;
+
+    const first = applyGameAction(readyState(1), action);
+    const second = applyGameAction(first, action);
+
+    expect(first.wallet.memoryShards).toBe(4);
+    expect(first.ledger).toEqual([
+      {
+        id: "map-shard:shard-first-0",
+        actionId: "map-shard:shard-first-0",
+        change: 3,
+        reason: "walk",
+        createdAt: action.createdAt,
+      },
+    ]);
+    expect(second).toBe(first);
+  });
+
   it("caps walking rewards at 80 shards", () => {
     const result = applyGameAction(readyState(5), {
       ...claimAction,

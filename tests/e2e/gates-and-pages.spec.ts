@@ -11,7 +11,9 @@ test("a visitor cannot bypass companion creation", async ({ page }) => {
 test("health response contains status only, not secret values", async ({ request }) => {
   const response = await request.get("/api/health");
   expect(response.ok()).toBe(true);
-  const body = await response.text();
-  expect(body).not.toContain("1813ee");
-  expect(body).not.toContain("0cdc90");
+  const body = (await response.json()) as {
+    integrations?: Record<string, unknown>;
+  };
+  expect(Object.keys(body).sort()).toEqual(["integrations", "ok", "runtime", "storage"].sort());
+  expect(Object.values(body.integrations ?? {}).every((value) => typeof value === "boolean")).toBe(true);
 });

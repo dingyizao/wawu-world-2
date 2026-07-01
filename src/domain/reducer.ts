@@ -107,6 +107,23 @@ export function applyGameAction(
     };
   }
 
+  if (action.type === "CLAIM_MAP_SHARD") {
+    const { amount, shardId } = action.payload;
+    if (!shardId || !isNonNegativeInteger(amount) || amount === 0 || amount > 5) {
+      throw new Error("INVALID_MAP_SHARD");
+    }
+
+    return {
+      ...state,
+      revision: state.revision + 1,
+      wallet: {
+        memoryShards: state.wallet.memoryShards + amount,
+      },
+      ledger: [...state.ledger, ledgerEntry(action, amount, "walk")],
+      processedActionIds: [...state.processedActionIds, action.id],
+    };
+  }
+
   const { shardCost, rewardItemId } = action.payload;
   if (!isNonNegativeInteger(shardCost)) {
     throw new Error("INVALID_SHARD_COST");

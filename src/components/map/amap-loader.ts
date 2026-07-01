@@ -1,8 +1,15 @@
 type AMapMap = {
   add: (overlay: unknown) => void;
   destroy: () => void;
+  remove: (overlay: unknown | unknown[]) => void;
   setCenter: (center: [number, number]) => void;
   setZoom: (zoom: number) => void;
+};
+
+type AMapMarker = {
+  on: (event: "click", handler: () => void) => void;
+  setMap: (map: AMapMap | null) => void;
+  setPosition: (position: [number, number]) => void;
 };
 
 type AMapNamespace = {
@@ -21,7 +28,8 @@ type AMapNamespace = {
     offset?: unknown;
     anchor?: string;
     title?: string;
-  }) => unknown;
+    zIndex?: number;
+  }) => AMapMarker;
   Pixel: new (x: number, y: number) => unknown;
 };
 
@@ -93,4 +101,4 @@ export function loadAmap(key: string) {
   return loadingPromise;
 }
 
-export type { AMapMap, AMapNamespace };
+export type { AMapMap, AMapMarker, AMapNamespace };

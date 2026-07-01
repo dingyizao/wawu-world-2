@@ -27,6 +27,15 @@ export type GameAction =
     }
   | {
       id: string;
+      type: "CLAIM_MAP_SHARD";
+      createdAt: string;
+      payload: {
+        shardId: string;
+        amount: number;
+      };
+    }
+  | {
+      id: string;
       type: "COMPLETE_AGENT_ACTION";
       createdAt: string;
       payload: {
