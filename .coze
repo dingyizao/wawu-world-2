@@ -1,4 +1,5 @@
 [project]
+sub_id = "c9f3780e"
 name = "wawu-world-2"
 requires = ["nodejs-22"]
 project_type = "web"
@@ -17,4 +18,9 @@ run = ["bash", ".cozeproj/scripts/deploy_run.sh"]
 [deploy.profile]
 kind = "service"
 flavor = "web"
-backend.enabled = true
+
+[deploy.backend]
+enabled = true
+
+[subprojects]
+path = ["."]

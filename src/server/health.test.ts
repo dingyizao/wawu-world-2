@@ -18,7 +18,7 @@ describe("health inspection", () => {
     expect(
       inspectHealth({
         NODE_ENV: "production",
-        DATABASE_URL: "postgres://configured",
+        PGDATABASE_URL: "postgres://configured",
         NEXT_PUBLIC_AMAP_JS_KEY: "configured",
         AMAP_JS_SECURITY_CODE: "configured",
         AMAP_WEB_SERVICE_KEY: "configured",

@@ -6,6 +6,7 @@ export function inspectHealth(environment: Environment = process.env) {
     database: Boolean(
       environment.DATABASE_URL ||
       environment.POSTGRES_URL ||
+      environment.PGDATABASE_URL ||
       environment.COZE_DATABASE_URL,
     ),
     amapJs: Boolean(environment.NEXT_PUBLIC_AMAP_JS_KEY),

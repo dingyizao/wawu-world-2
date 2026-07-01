@@ -212,6 +212,7 @@ function databaseUrl(environment: StorageEnvironment): string | null {
   for (const name of [
     "DATABASE_URL",
     "POSTGRES_URL",
+    "PGDATABASE_URL",
     "WAWU_DATABASE_URL",
     "COZE_DATABASE_URL",
   ]) {
