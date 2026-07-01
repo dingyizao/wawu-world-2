@@ -24,6 +24,7 @@ export function MobileShell({
             aria-current={active === item.href ? "page" : undefined}
             href={item.href}
             key={item.href}
+            prefetch={false}
           >
             {item.label}
           </Link>

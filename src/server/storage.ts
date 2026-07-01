@@ -248,9 +248,11 @@ export function createGameRepository(
   );
 }
 
-let sharedRepository: GameRepository | undefined;
+const repositoryGlobal = globalThis as typeof globalThis & {
+  __wawuGameRepository?: GameRepository;
+};
 
 export function getGameRepository(): GameRepository {
-  sharedRepository ??= createGameRepository();
-  return sharedRepository;
+  repositoryGlobal.__wawuGameRepository ??= createGameRepository();
+  return repositoryGlobal.__wawuGameRepository;
 }

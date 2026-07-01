@@ -4,6 +4,8 @@ next-env.d.ts
 *.tsbuildinfo
 dist/
 coverage/
+test-results/
+playwright-report/
 .env
 .env.*
 !.env.example

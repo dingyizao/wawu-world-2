@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { MBTI_CATALOG } from "../../domain/mbti";
@@ -36,7 +35,6 @@ const TUNING_FIELDS = [
 ] as const;
 
 export function OnboardingFlow() {
-  const router = useRouter();
   const [draft, setDraft] = useState(createOnboardingDraft);
   const [appearanceType, setAppearanceType] = useState<MbtiType>("ENFP");
   const [submitting, setSubmitting] = useState(false);
@@ -89,8 +87,7 @@ export function OnboardingFlow() {
       setError("入世资料暂时没有保存成功，请再试一次。");
       return;
     }
-    router.replace("/map");
-    router.refresh();
+    window.location.assign("/map");
   }
 
   if (draft.stage === "meet") {

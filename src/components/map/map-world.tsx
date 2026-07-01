@@ -42,10 +42,10 @@ export function MapWorld({
       </section>
 
       <nav className="world-nav" aria-label="主要功能">
-        <Link aria-current="page" href="/map">同行</Link>
-        <Link href="/agent">分身</Link>
-        <Link href="/agent/creation">创造</Link>
-        <Link href="/house">娃屋</Link>
+        <Link aria-current="page" href="/map" prefetch={false}>同行</Link>
+        <Link href="/agent" prefetch={false}>分身</Link>
+        <Link href="/agent/creation" prefetch={false}>创造</Link>
+        <Link href="/house" prefetch={false}>娃屋</Link>
       </nav>
     </main>
   );

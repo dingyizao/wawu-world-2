@@ -225,7 +225,7 @@ export function WalkCompanion({
         <div className="reward-note">
           <strong>获得：{reward.name}</strong>
           <span>训练所得已放入储物柜，不会标记为真实到访。</span>
-          <Link href="/house">打开我的娃屋</Link>
+          <Link href="/house" prefetch={false}>打开我的娃屋</Link>
         </div>
       ) : accepted ? (
         <p className="accepted-note">
