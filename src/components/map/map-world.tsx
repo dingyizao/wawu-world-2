@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import { AmapSurface } from "./amap-surface";
 import { WalkCompanion } from "./walk-companion";
@@ -41,10 +42,10 @@ export function MapWorld({
       </section>
 
       <nav className="world-nav" aria-label="主要功能">
-        <span aria-current="page">同行</span>
-        <span>碎片</span>
-        <span>创造</span>
-        <span>娃屋</span>
+        <Link aria-current="page" href="/map">同行</Link>
+        <Link href="/agent">分身</Link>
+        <Link href="/agent/creation">创造</Link>
+        <Link href="/house">娃屋</Link>
       </nav>
     </main>
   );

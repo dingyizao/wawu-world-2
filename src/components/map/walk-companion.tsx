@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CompanionSuggestion } from "./companion-suggestion";
@@ -45,6 +46,10 @@ export function WalkCompanion({
   const [steps, setSteps] = useState(0);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [reward, setReward] = useState<{
+    name: string;
+    assetPath: string;
+  } | null>(null);
   const [recap, setRecap] = useState<Recap | null>(null);
   const [earnedShards, setEarnedShards] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -80,6 +85,7 @@ export function WalkCompanion({
       setSteps(mode === "training" ? 328 : 0);
       setSuggestion(null);
       setAccepted(false);
+      setReward(null);
       setRecap(null);
     } catch {
       setError("同行暂时无法开始，请稍后再试。");
@@ -143,6 +149,38 @@ export function WalkCompanion({
     }
   }
 
+  async function checkIn() {
+    if (!session || !suggestion?.suggestedAnchorId) {
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/anchors/check-in", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          anchorId: suggestion.suggestedAnchorId,
+          walkId: session.id,
+          mode: session.mode,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error ?? "CHECK_IN_FAILED");
+      }
+      setReward(body.item);
+    } catch {
+      setError(
+        session.mode === "real"
+          ? "真实打卡需在地点 120 米内；可改用训练同行演示。"
+          : "训练打卡暂时失败，请稍后重试。",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (recap) {
     return (
       <WalkRecap
@@ -183,7 +221,13 @@ export function WalkCompanion({
         </span>
         <strong>{steps} 步</strong>
       </div>
-      {accepted ? (
+      {reward ? (
+        <div className="reward-note">
+          <strong>获得：{reward.name}</strong>
+          <span>训练所得已放入储物柜，不会标记为真实到访。</span>
+          <Link href="/house">打开我的娃屋</Link>
+        </div>
+      ) : accepted ? (
         <p className="accepted-note">
           你决定和{companionName}一起去看看。地点执行仍由你确认。
         </p>
@@ -204,6 +248,16 @@ export function WalkCompanion({
           听听{companionName}发现了什么
         </button>
       )}
+      {accepted && !reward ? (
+        <button
+          className="secondary-button"
+          disabled={busy}
+          onClick={checkIn}
+          type="button"
+        >
+          {session.mode === "training" ? "完成训练打卡" : "确认到场打卡"}
+        </button>
+      ) : null}
       <button className="primary-button" disabled={busy} onClick={finish} type="button">
         结束同行并生成回顾
       </button>
