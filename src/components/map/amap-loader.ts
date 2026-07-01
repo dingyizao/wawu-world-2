@@ -69,8 +69,7 @@ function loadLoaderScript() {
   });
 }
 
-export function loadAmap() {
-  const key = process.env.NEXT_PUBLIC_AMAP_JS_KEY;
+export function loadAmap(key: string) {
   if (!key) {
     return Promise.reject(new Error("AMAP_CLIENT_CONFIG_MISSING"));
   }

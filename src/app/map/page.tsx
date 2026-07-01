@@ -23,6 +23,7 @@ export default async function MapPage() {
 
   return (
     <MapWorld
+      amapJsKey={process.env.NEXT_PUBLIC_AMAP_JS_KEY ?? ""}
       companionName={agent.name}
       initialMemoryShards={result.body.wallet.memoryShards}
       walkAssetPath={walkAssetPath}

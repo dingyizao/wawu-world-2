@@ -20,9 +20,11 @@ function markerContent(className: string, imagePath?: string) {
 }
 
 export function AmapSurface({
+  amapJsKey,
   companionName,
   walkAssetPath,
 }: {
+  amapJsKey: string;
   companionName: string;
   walkAssetPath: string;
 }) {
@@ -35,7 +37,7 @@ export function AmapSurface({
     let cancelled = false;
     let map: AMapMap | null = null;
 
-    loadAmap()
+    loadAmap(amapJsKey)
       .then((AMap) => {
         if (cancelled || !containerRef.current) {
           return;
@@ -75,7 +77,7 @@ export function AmapSurface({
       map?.destroy();
       mapRef.current = null;
     };
-  }, [companionName, walkAssetPath]);
+  }, [amapJsKey, companionName, walkAssetPath]);
 
   function locate() {
     if (!navigator.geolocation || !mapRef.current) {

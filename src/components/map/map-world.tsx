@@ -7,10 +7,12 @@ import { AmapSurface } from "./amap-surface";
 import { WalkCompanion } from "./walk-companion";
 
 export function MapWorld({
+  amapJsKey,
   companionName,
   initialMemoryShards,
   walkAssetPath,
 }: {
+  amapJsKey: string;
   companionName: string;
   initialMemoryShards: number;
   walkAssetPath: string;
@@ -32,6 +34,7 @@ export function MapWorld({
 
       <section className="map-card" aria-label="同行地图">
         <AmapSurface
+          amapJsKey={amapJsKey}
           companionName={companionName}
           walkAssetPath={walkAssetPath}
         />
