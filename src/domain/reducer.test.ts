@@ -20,6 +20,35 @@ const claimAction = {
 } as const satisfies GameAction;
 
 describe("memory shard reducer", () => {
+  it("starts and finishes one walk atomically with its reward", () => {
+    const initial = readyState(0);
+    const started = applyGameAction(initial, {
+      id: "start-walk-1",
+      type: "START_WALK",
+      createdAt: "2026-07-01T01:00:00.000Z",
+      payload: { walkId: "walk-1", mode: "training" },
+    });
+    const finished = applyGameAction(started, {
+      id: "finish-walk-1",
+      type: "FINISH_WALK",
+      createdAt: "2026-07-01T01:20:00.000Z",
+      payload: { walkId: "walk-1", steps: 1260 },
+    });
+
+    expect(finished.walks).toEqual([
+      {
+        id: "walk-1",
+        mode: "training",
+        steps: 1260,
+        status: "complete",
+        startedAt: "2026-07-01T01:00:00.000Z",
+        finishedAt: "2026-07-01T01:20:00.000Z",
+      },
+    ]);
+    expect(finished.wallet.memoryShards).toBe(12);
+    expect(finished.ledger.at(-1)?.change).toBe(12);
+  });
+
   it("limits ledger reasons to current shard operations", () => {
     expectTypeOf<ShardLedgerEntry["reason"]>().toEqualTypeOf<
       "walk" | "agent_action"

@@ -77,6 +77,9 @@ export interface WalkSession {
   id: string;
   mode: WalkMode;
   steps: number;
+  status: "active" | "complete";
+  startedAt: string;
+  finishedAt?: string;
 }
 
 export interface CityAnchor {
