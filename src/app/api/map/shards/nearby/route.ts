@@ -2,8 +2,8 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
-  claimMapShard,
-  parseClaimInput,
+  parseNearbyInput,
+  refreshMapShards,
 } from "../../../../../server/map-shards";
 import { authenticatedUserId } from "../../../../../server/session";
 import { getGameRepository } from "../../../../../server/storage";
@@ -21,18 +21,18 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
-  const parsed = parseClaimInput(input);
+  const parsed = parseNearbyInput(input);
   if (!parsed) {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
   try {
     return NextResponse.json(
-      await claimMapShard(repository, userId, parsed),
+      await refreshMapShards(repository, userId, parsed),
     );
   } catch (error) {
     const code =
-      error instanceof Error ? error.message : "CLAIM_MAP_SHARD_FAILED";
+      error instanceof Error ? error.message : "REFRESH_MAP_SHARDS_FAILED";
     return NextResponse.json({ error: code }, { status: 409 });
   }
 }

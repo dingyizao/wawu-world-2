@@ -1,38 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { finishWalk, type RoutePoint } from "../../../../domain/walk";
+import {
+  finishWalk,
+  verifyWalkSteps,
+} from "../../../../domain/walk";
 import { authenticatedUserId } from "../../../../server/session";
 import { getGameRepository } from "../../../../server/storage";
-
-function routePoints(value: unknown): RoutePoint[] | null {
-  if (!Array.isArray(value) || value.length > 200) {
-    return null;
-  }
-  const points: RoutePoint[] = [];
-  for (const point of value) {
-    if (
-      !point ||
-      typeof point !== "object" ||
-      !("longitude" in point) ||
-      !("latitude" in point) ||
-      !("recordedAt" in point) ||
-      typeof point.longitude !== "number" ||
-      typeof point.latitude !== "number" ||
-      typeof point.recordedAt !== "string" ||
-      !Number.isFinite(point.longitude) ||
-      !Number.isFinite(point.latitude)
-    ) {
-      return null;
-    }
-    points.push({
-      longitude: point.longitude,
-      latitude: point.latitude,
-      recordedAt: point.recordedAt,
-    });
-  }
-  return points;
-}
+import { parseWalkFinishInput } from "../../../../server/walk-finish";
 
 export async function POST(request: Request) {
   const repository = getGameRepository();
@@ -48,25 +23,21 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
-  if (
-    !input ||
-    typeof input !== "object" ||
-    !("sessionId" in input) ||
-    typeof input.sessionId !== "string" ||
-    !("steps" in input) ||
-    typeof input.steps !== "number" ||
-    !("route" in input)
-  ) {
-    return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
-  }
-  const route = routePoints(input.route);
-  const walk = state?.walks.find(({ id }) => id === input.sessionId);
-  if (!walk || route === null) {
+  const parsed = parseWalkFinishInput(input);
+  const walk = state?.walks.find(({ id }) => id === parsed?.sessionId);
+  if (!parsed || !walk) {
     return NextResponse.json({ error: "INVALID_INPUT" }, { status: 400 });
   }
 
   const finishedAt = new Date().toISOString();
   try {
+    const verified = verifyWalkSteps({
+      mode: walk.mode,
+      startedAt: walk.startedAt,
+      finishedAt,
+      summary: parsed.stepSummary,
+      route: parsed.route,
+    });
     const recap = finishWalk({
       session: {
         id: walk.id,
@@ -74,20 +45,29 @@ export async function POST(request: Request) {
         startedAt: walk.startedAt,
         canCreateRealCheckIn: walk.mode === "real",
       },
-      steps: input.steps,
+      steps: verified.steps,
       finishedAt,
-      route,
+      route: parsed.route,
     });
     const result = await repository.applyAction(userId, {
       id: `finish:${walk.id}`,
       type: "FINISH_WALK",
       createdAt: finishedAt,
-      payload: { walkId: walk.id, steps: input.steps },
+      payload: {
+        walkId: walk.id,
+        steps: verified.steps,
+        stepSource: verified.source,
+        distanceMeters: verified.distanceMeters,
+      },
     });
     return NextResponse.json({
-      recap,
+      recap: {
+        ...recap,
+        stepSource: verified.source,
+        distanceMeters: verified.distanceMeters,
+      },
       memoryShards: result.state.wallet.memoryShards,
-      earnedShards: Math.min(Math.floor(input.steps / 100), 80),
+      earnedShards: Math.min(Math.floor(verified.steps / 100), 80),
     });
   } catch (error) {
     const code =

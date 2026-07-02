@@ -1,9 +1,15 @@
-import type { MbtiProfile, WalkMode } from "./types";
+import { countGpsSteps } from "./map-interactions";
+import type {
+  MbtiProfile,
+  StepSummary,
+  WalkMode,
+} from "./types";
 
 export type RoutePoint = {
   longitude: number;
   latitude: number;
   recordedAt: string;
+  accuracy?: number;
 };
 
 export type WalkSessionRuntime = {
@@ -72,5 +78,55 @@ export function finishWalk(input: {
     steps: input.steps,
     training: input.session.mode === "training",
     route: input.route.length > 2 ? input.route.slice(1, -1) : [],
+  };
+}
+
+export function verifyWalkSteps(input: {
+  mode: WalkMode;
+  startedAt: string;
+  finishedAt: string;
+  summary: StepSummary;
+  route: RoutePoint[];
+}) {
+  if (
+    (input.mode === "training" && input.summary.source !== "training") ||
+    (input.mode === "real" && input.summary.source === "training")
+  ) {
+    throw new Error("INVALID_STEP_SOURCE");
+  }
+  const durationMs = Math.max(
+    0,
+    Date.parse(input.finishedAt) - Date.parse(input.startedAt),
+  );
+  const cadenceCap = Math.floor((durationMs / 1000) * 3.5);
+  if (input.mode === "training") {
+    return {
+      source: "training" as const,
+      steps: Math.min(Math.max(0, Math.floor(input.summary.sensorSteps)), cadenceCap),
+      distanceMeters: 0,
+    };
+  }
+  const gps = countGpsSteps(
+    input.route.map((point) => ({
+      longitude: point.longitude,
+      latitude: point.latitude,
+      accuracy: point.accuracy ?? 50,
+      recordedAt: point.recordedAt,
+    })),
+  );
+  if (input.summary.source === "gps-estimate") {
+    return {
+      source: "gps-estimate" as const,
+      steps: Math.min(gps.steps, cadenceCap),
+      distanceMeters: gps.distanceMeters,
+    };
+  }
+  return {
+    source: "motion" as const,
+    steps: Math.min(
+      Math.max(0, Math.floor(input.summary.sensorSteps)),
+      cadenceCap,
+    ),
+    distanceMeters: gps.distanceMeters,
   };
 }

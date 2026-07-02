@@ -8,7 +8,7 @@ function isNonNegativeInteger(value: number): boolean {
 function ledgerEntry(
   action: GameAction,
   change: number,
-  reason: "walk" | "agent_action",
+  reason: "walk" | "map_shard" | "agent_action",
 ): ShardLedgerEntry {
   return {
     id: action.id,
@@ -72,6 +72,8 @@ export function applyGameAction(
           ? {
               ...entry,
               steps,
+              stepSource: action.payload.stepSource,
+              distanceMeters: action.payload.distanceMeters,
               status: "complete" as const,
               finishedAt: action.createdAt,
             }
@@ -107,6 +109,15 @@ export function applyGameAction(
     };
   }
 
+  if (action.type === "REFRESH_MAP_SHARDS") {
+    return {
+      ...state,
+      revision: state.revision + 1,
+      activeMapShards: action.payload.shards,
+      processedActionIds: [...state.processedActionIds, action.id],
+    };
+  }
+
   if (action.type === "CLAIM_MAP_SHARD") {
     const { amount, shardId } = action.payload;
     if (!shardId || !isNonNegativeInteger(amount) || amount === 0 || amount > 5) {
@@ -119,7 +130,10 @@ export function applyGameAction(
       wallet: {
         memoryShards: state.wallet.memoryShards + amount,
       },
-      ledger: [...state.ledger, ledgerEntry(action, amount, "walk")],
+      ledger: [...state.ledger, ledgerEntry(action, amount, "map_shard")],
+      activeMapShards: state.activeMapShards?.filter(
+        ({ id }) => id !== shardId,
+      ),
       processedActionIds: [...state.processedActionIds, action.id],
     };
   }

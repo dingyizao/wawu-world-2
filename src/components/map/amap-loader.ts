@@ -31,6 +31,20 @@ type AMapNamespace = {
     zIndex?: number;
   }) => AMapMarker;
   Pixel: new (x: number, y: number) => unknown;
+  convertFrom: (
+    position: [number, number],
+    type: "gps",
+    callback: (
+      status: "complete" | "no_data" | "error",
+      result: {
+        info?: string;
+        locations?: Array<{
+          getLng: () => number;
+          getLat: () => number;
+        }>;
+      },
+    ) => void,
+  ) => void;
 };
 
 declare global {

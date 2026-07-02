@@ -51,7 +51,7 @@ describe("memory shard reducer", () => {
 
   it("limits ledger reasons to current shard operations", () => {
     expectTypeOf<ShardLedgerEntry["reason"]>().toEqualTypeOf<
-      "walk" | "agent_action"
+      "walk" | "map_shard" | "agent_action"
     >();
   });
 
@@ -93,11 +93,40 @@ describe("memory shard reducer", () => {
         id: "map-shard:shard-first-0",
         actionId: "map-shard:shard-first-0",
         change: 3,
-        reason: "walk",
+        reason: "map_shard",
         createdAt: action.createdAt,
       },
     ]);
     expect(second).toBe(first);
+  });
+
+  it("stores the server shard set and removes a claimed shard", () => {
+    const refreshed = applyGameAction(readyState(0), {
+      id: "refresh:window-1",
+      type: "REFRESH_MAP_SHARDS",
+      createdAt: "2026-07-03T01:00:00.000Z",
+      payload: {
+        shards: [
+          {
+            id: "shard-1",
+            amount: 2,
+            label: "记忆碎片 +2",
+            longitude: 104.0668,
+            latitude: 30.5728,
+            expiresAt: "2026-07-03T01:10:00.000Z",
+          },
+        ],
+      },
+    });
+    const claimed = applyGameAction(refreshed, {
+      id: "map-shard:shard-1",
+      type: "CLAIM_MAP_SHARD",
+      createdAt: "2026-07-03T01:01:00.000Z",
+      payload: { shardId: "shard-1", amount: 2 },
+    });
+
+    expect(refreshed.activeMapShards).toHaveLength(1);
+    expect(claimed.activeMapShards).toEqual([]);
   });
 
   it("caps walking rewards at 80 shards", () => {

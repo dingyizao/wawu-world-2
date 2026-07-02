@@ -1,21 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { companionPositionFromUser } from "../../domain/map-interactions";
+import type { ActiveMapShard } from "../../domain/types";
+import { convertGpsPoint } from "./amap-coordinates";
 import {
-  companionPositionFromUser,
-  createMemoryShardRefresh,
-  type MapPoint,
-  type MemoryShardSpawn,
-} from "../../domain/map-interactions";
-import { loadAmap, type AMapMap, type AMapMarker, type AMapNamespace } from "./amap-loader";
+  loadAmap,
+  type AMapMap,
+  type AMapMarker,
+  type AMapNamespace,
+} from "./amap-loader";
 import { FallbackMap } from "./fallback-map";
+import type { WalkTracker } from "./use-walk-tracker";
 
 const CHENGDU_CENTER: [number, number] = [104.0668, 30.5728];
-const INITIAL_SHARDS = createMemoryShardRefresh({
-  center: { longitude: CHENGDU_CENTER[0], latitude: CHENGDU_CENTER[1] },
-  seed: "initial",
-});
 
 function markerContent(className: string, imagePath?: string) {
   const element = document.createElement("div");
@@ -29,11 +28,10 @@ function markerContent(className: string, imagePath?: string) {
   return element;
 }
 
-function shardContent(shard: MemoryShardSpawn) {
-  const element = document.createElement("button");
+function shardContent(shard: ActiveMapShard) {
+  const element = document.createElement("div");
   element.className = "amap-shard-marker";
-  element.type = "button";
-  element.setAttribute("aria-label", `拾取${shard.label}`);
+  element.setAttribute("aria-label", `${shard.label}，靠近后自动拾取`);
   element.innerHTML = `
     <img alt="" src="/assets/generated/map/memory-shard-glow.png" />
     <span>+${shard.amount}</span>
@@ -44,12 +42,12 @@ function shardContent(shard: MemoryShardSpawn) {
 export function AmapSurface({
   amapJsKey,
   companionName,
-  onWalletChange,
+  tracker,
   walkAssetPath,
 }: {
   amapJsKey: string;
   companionName: string;
-  onWalletChange: (balance: number) => void;
+  tracker: WalkTracker;
   walkAssetPath: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,18 +56,7 @@ export function AmapSurface({
   const playerMarkerRef = useRef<AMapMarker | null>(null);
   const companionMarkerRef = useRef<AMapMarker | null>(null);
   const shardMarkersRef = useRef<AMapMarker[]>([]);
-  const watchIdRef = useRef<number | null>(null);
-  const hasLiveLocationRef = useRef(false);
-  const latestCenterRef = useRef<MapPoint>({
-    longitude: CHENGDU_CENTER[0],
-    latitude: CHENGDU_CENTER[1],
-  });
   const [mode, setMode] = useState<"loading" | "real" | "fallback">("loading");
-  const [locationLabel, setLocationLabel] = useState("成都 · 等待定位");
-  const [following, setFollowing] = useState(false);
-  const [shards, setShards] = useState<MemoryShardSpawn[]>(INITIAL_SHARDS);
-  const [collectingShardId, setCollectingShardId] = useState<string | null>(null);
-  const [collectionLabel, setCollectionLabel] = useState("地图上会随机刷新可拾取的记忆碎片");
 
   useEffect(() => {
     let cancelled = false;
@@ -103,9 +90,7 @@ export function AmapSurface({
         playerMarkerRef.current = playerMarker;
         companionMarkerRef.current = companionMarker;
         map.add([playerMarker, companionMarker]);
-        if (!cancelled) {
-          setMode("real");
-        }
+        setMode("real");
       })
       .catch(() => {
         if (!cancelled) {
@@ -115,10 +100,6 @@ export function AmapSurface({
 
     return () => {
       cancelled = true;
-      if (watchIdRef.current !== null) {
-        navigator.geolocation?.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
       shardMarkersRef.current.forEach((marker) => marker.setMap(null));
       shardMarkersRef.current = [];
       map?.destroy();
@@ -129,141 +110,92 @@ export function AmapSurface({
     };
   }, [amapJsKey, companionName, walkAssetPath]);
 
-  const collectShard = useCallback(async (shard: MemoryShardSpawn) => {
-    if (collectingShardId) {
-      return;
-    }
-    setCollectingShardId(shard.id);
-    setCollectionLabel(`正在拾取${shard.label}…`);
-    try {
-      const response = await fetch("/api/map/shards/claim", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          shardId: shard.id,
-          amount: shard.amount,
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok) {
-        throw new Error(body.error ?? "CLAIM_MAP_SHARD_FAILED");
-      }
-      onWalletChange(body.memoryShards);
-      setShards((current) => current.filter(({ id }) => id !== shard.id));
-      setCollectionLabel(`已拾取${shard.label}，新的余额已更新`);
-    } catch {
-      setCollectionLabel("这枚碎片暂时没有收好，请稍后再试");
-    } finally {
-      setCollectingShardId(null);
-    }
-  }, [collectingShardId, onWalletChange]);
-
   useEffect(() => {
-    if (mode !== "real" || !mapRef.current || !amapRef.current) {
-      return;
-    }
-    const map = mapRef.current;
     const AMap = amapRef.current;
-    shardMarkersRef.current.forEach((marker) => marker.setMap(null));
-    const markers = shards.map((shard) => {
-      const marker = new AMap.Marker({
-        position: [shard.longitude, shard.latitude],
-        content: shardContent(shard),
-        offset: new AMap.Pixel(-24, -48),
-        title: shard.label,
-        zIndex: 80,
+    const map = mapRef.current;
+    if (mode !== "real" || !AMap || !map || !tracker.latestSample) {
+      return;
+    }
+    let cancelled = false;
+    convertGpsPoint(AMap, tracker.latestSample)
+      .then((point) => {
+        if (cancelled) {
+          return;
+        }
+        const companion = companionPositionFromUser(point);
+        const userCenter: [number, number] = [
+          point.longitude,
+          point.latitude,
+        ];
+        playerMarkerRef.current?.setPosition(userCenter);
+        companionMarkerRef.current?.setPosition([
+          companion.longitude,
+          companion.latitude,
+        ]);
+        map.setCenter(userCenter);
+        map.setZoom(17);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMode("fallback");
+        }
       });
-      marker.on("click", () => {
-        void collectShard(shard);
-      });
-      return marker;
-    });
-    shardMarkersRef.current = markers;
-    map.add(markers);
-
     return () => {
-      markers.forEach((marker) => marker.setMap(null));
+      cancelled = true;
     };
-  }, [mode, shards, collectShard]);
+  }, [mode, tracker.latestSample]);
 
   useEffect(() => {
-    if (mode !== "real") {
+    const AMap = amapRef.current;
+    const map = mapRef.current;
+    if (mode !== "real" || !AMap || !map) {
       return;
     }
-    const timer = window.setInterval(() => {
-      setShards(
-        createMemoryShardRefresh({
-          center: latestCenterRef.current,
-          seed: `${Date.now()}`,
-        }),
-      );
-      setCollectionLabel("新的记忆碎片已刷新在你附近");
-    }, 45_000);
-    return () => window.clearInterval(timer);
-  }, [mode]);
-
-  function updateLivePosition(position: MapPoint) {
-    latestCenterRef.current = position;
-    const companion = companionPositionFromUser(position);
-    const userCenter: [number, number] = [position.longitude, position.latitude];
-    const companionCenter: [number, number] = [
-      companion.longitude,
-      companion.latitude,
-    ];
-    playerMarkerRef.current?.setPosition(userCenter);
-    companionMarkerRef.current?.setPosition(companionCenter);
-    mapRef.current?.setCenter(userCenter);
-    mapRef.current?.setZoom(17);
-    setLocationLabel("真实定位跟随中 · 用户移动时光点会同步变化");
-  }
-
-  function stopFollowing() {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation?.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-    setFollowing(false);
-    setLocationLabel("定位跟随已暂停 · 地图保留最后位置");
-  }
-
-  function locate() {
-    if (following) {
-      stopFollowing();
-      return;
-    }
-    if (!navigator.geolocation || !navigator.geolocation.watchPosition || !mapRef.current) {
-      setLocationLabel("浏览器不支持持续定位 · 可继续浏览地图");
-      return;
-    }
-    setFollowing(true);
-    setLocationLabel("正在请求真实位置并开启跟随…");
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      ({ coords }) => {
-        const center = {
-          longitude: coords.longitude,
-          latitude: coords.latitude,
-        };
-        updateLivePosition(center);
-        if (!hasLiveLocationRef.current) {
-          hasLiveLocationRef.current = true;
-          setShards(
-            createMemoryShardRefresh({
-              center,
-              seed: `${Math.round(coords.longitude * 10000)}-${Math.round(coords.latitude * 10000)}`,
-            }),
-          );
+    let cancelled = false;
+    shardMarkersRef.current.forEach((marker) => marker.setMap(null));
+    shardMarkersRef.current = [];
+    Promise.all(
+      tracker.shards.map(async (shard) => ({
+        shard,
+        point: await convertGpsPoint(AMap, shard),
+      })),
+    )
+      .then((converted) => {
+        if (cancelled) {
+          return;
         }
-      },
-      () => {
-        stopFollowing();
-        setLocationLabel("定位未授权或暂时不可用 · 可继续浏览地图");
-      },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 5_000 },
-    );
-  }
+        const markers = converted.map(({ point, shard }) =>
+          new AMap.Marker({
+            position: [point.longitude, point.latitude],
+            content: shardContent(shard),
+            offset: new AMap.Pixel(-24, -48),
+            title: shard.label,
+            zIndex: 80,
+          }),
+        );
+        shardMarkersRef.current = markers;
+        map.add(markers);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMode("fallback");
+        }
+      });
+    return () => {
+      cancelled = true;
+      shardMarkersRef.current.forEach((marker) => marker.setMap(null));
+      shardMarkersRef.current = [];
+    };
+  }, [mode, tracker.shards]);
 
   if (mode === "fallback") {
-    return <FallbackMap />;
+    return (
+      <div className="amap-wrap">
+        <FallbackMap />
+        <span className="map-location-label">{tracker.locationLabel}</span>
+        <span className="map-shard-label">{tracker.collectionLabel}</span>
+      </div>
+    );
   }
 
   return (
@@ -274,11 +206,8 @@ export function AmapSurface({
       ) : (
         <>
           <span className="map-mode-chip map-mode-chip--real">高德真实地图</span>
-          <button className="map-locate-button" onClick={locate} type="button">
-            {following ? "停止定位跟随" : "开启定位跟随"}
-          </button>
-          <span className="map-location-label">{locationLabel}</span>
-          <span className="map-shard-label">{collectionLabel}</span>
+          <span className="map-location-label">{tracker.locationLabel}</span>
+          <span className="map-shard-label">{tracker.collectionLabel}</span>
         </>
       )}
     </div>

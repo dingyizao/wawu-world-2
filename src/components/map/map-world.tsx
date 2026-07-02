@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { AmapSurface } from "./amap-surface";
+import { useWalkTracker } from "./use-walk-tracker";
 import { WalkCompanion } from "./walk-companion";
 
 export function MapWorld({
@@ -18,6 +19,7 @@ export function MapWorld({
   walkAssetPath: string;
 }) {
   const [memoryShards, setMemoryShards] = useState(initialMemoryShards);
+  const tracker = useWalkTracker({ onWalletChange: setMemoryShards });
 
   return (
     <main className="world-shell">
@@ -36,12 +38,13 @@ export function MapWorld({
         <AmapSurface
           amapJsKey={amapJsKey}
           companionName={companionName}
-          onWalletChange={setMemoryShards}
+          tracker={tracker}
           walkAssetPath={walkAssetPath}
         />
         <WalkCompanion
           companionName={companionName}
           onWalletChange={setMemoryShards}
+          tracker={tracker}
         />
       </section>
 

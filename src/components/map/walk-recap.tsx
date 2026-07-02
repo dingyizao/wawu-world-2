@@ -4,11 +4,13 @@ export function WalkRecap({
   steps,
   earnedShards,
   training,
+  stepSource,
   onClose,
 }: {
   steps: number;
   earnedShards: number;
   training: boolean;
+  stepSource: "motion" | "gps-estimate" | "training";
   onClose: () => void;
 }) {
   return (
@@ -27,6 +29,14 @@ export function WalkRecap({
         <span><strong>{steps}</strong> 步</span>
         <span><strong>+{earnedShards}</strong> 记忆碎片</span>
       </div>
+      <p>
+        计步来源：
+        {stepSource === "motion"
+          ? "运动传感器"
+          : stepSource === "gps-estimate"
+            ? "GPS 距离估算"
+            : "训练模拟"}
+      </p>
       <p>
         起点和终点附近的路线已自动模糊，只保留中段用于这次共同回顾。
       </p>

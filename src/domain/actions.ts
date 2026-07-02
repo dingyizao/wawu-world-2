@@ -1,3 +1,5 @@
+import type { ActiveMapShard } from "./types";
+
 export type GameAction =
   | {
       id: string;
@@ -15,6 +17,8 @@ export type GameAction =
       payload: {
         walkId: string;
         steps: number;
+        stepSource?: "motion" | "gps-estimate" | "training";
+        distanceMeters?: number;
       };
     }
   | {
@@ -23,6 +27,14 @@ export type GameAction =
       createdAt: string;
       payload: {
         steps: number;
+      };
+    }
+  | {
+      id: string;
+      type: "REFRESH_MAP_SHARDS";
+      createdAt: string;
+      payload: {
+        shards: ActiveMapShard[];
       };
     }
   | {

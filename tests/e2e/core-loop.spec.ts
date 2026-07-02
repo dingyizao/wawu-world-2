@@ -1,14 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test("new player completes the training loop into storage", async ({ page }) => {
-  test.setTimeout(60_000);
+async function completeOnboarding(page: Page, name: string) {
   await page.goto("/");
   await expect(page).toHaveURL(/onboarding/);
 
   const nameInput = page.getByLabel("给同行者一个名字");
   await nameInput.waitFor();
   await page.waitForTimeout(400);
-  await nameInput.fill("小满");
+  await nameInput.fill(name);
   await page.getByRole("button", { name: "开始创造分身" }).click();
   await page.getByRole("button").filter({ hasText: "ENFP" }).click();
   await page.getByRole("button", { name: "确认这位同行者" }).click();
@@ -17,27 +16,26 @@ test("new player completes the training loop into storage", async ({ page }) => 
   await page.getByRole("button", { name: "一起走到第一枚碎片" }).click();
   await page.getByRole("button", { name: /亲手收集/ }).click();
   await page.getByRole("button", { name: "进入娃屋世界" }).click();
+  await expect(page).toHaveURL(/map/);
+}
+
+test("new player completes the training loop into storage", async ({ page }) => {
+  test.setTimeout(60_000);
+  await completeOnboarding(page, "小满");
 
   await expect.poll(async () =>
     (await page.context().cookies()).map(({ name }) => name),
   ).toEqual(expect.arrayContaining(["wawu_session", "wawu_onboarding"]));
-  await expect(page).toHaveURL(/map/);
-  await expect(page.getByText("地图上会随机刷新可拾取的记忆碎片")).toBeVisible();
-  const shardClaim = await page.evaluate(async () => {
-    const response = await fetch("/api/map/shards/claim", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ shardId: "e2e-visible-shard", amount: 2 }),
-    });
-    return { ok: response.ok, status: response.status, body: await response.text() };
-  });
-  if (!shardClaim.ok) {
-    throw new Error(`map shard claim failed: ${JSON.stringify(shardClaim)}`);
-  }
-  expect(shardClaim.status).toBe(200);
-  await page.reload();
-  await expect(page.getByLabel("记忆碎片余额")).toContainText("2");
+  await expect(page.getByText("开始同行后，碎片会稳定刷新在附近")).toBeVisible();
   await page.getByRole("button", { name: "开始训练同行" }).click();
+  await expect(page.getByText("训练模拟计步")).toBeVisible();
+  await expect(page.locator(".tracking-detail-label")).toContainText(
+    /已自动拾取.*训练所得/,
+    {
+    timeout: 15_000,
+    },
+  );
+  await expect(page.getByLabel("记忆碎片余额")).not.toContainText("0");
   await page.getByRole("button", { name: /听听.*发现了什么/ }).click();
   await expect(page.getByText(/预置结果|Coze 原生模型生成/)).toBeVisible();
   await page.getByRole("button", { name: "一起去看看" }).click();
@@ -51,4 +49,88 @@ test("new player completes the training loop into storage", async ({ page }) => 
   await expect(page.getByRole("button", { name: /明信片夹/ })).toBeVisible();
   await expect(page.getByText("训练所得")).toBeVisible();
   await expect(page.getByText("一只装着共同记忆的储物柜")).toBeVisible();
+});
+
+test("real walk follows geolocation and automatically claims an overlapping shard", async ({
+  context,
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await context.grantPermissions(["geolocation"], {
+    origin: "http://localhost:60553",
+  });
+  await context.setGeolocation({
+    longitude: 104.0668,
+    latitude: 30.5728,
+    accuracy: 10,
+  });
+  await completeOnboarding(page, "阿步");
+
+  await page.getByRole("button", { name: "开始真实同行" }).click();
+  await expect(page.getByText("GPS 距离估算计步")).toBeVisible();
+  await expect(page.getByText(/真实定位跟随中/)).toBeVisible();
+  await context.setGeolocation({
+    longitude: 104.0668,
+    latitude: 30.572845,
+    accuracy: 10,
+  });
+  await expect(page.locator(".walk-status-row").getByText(/步/)).not.toHaveText(
+    "0 步",
+    { timeout: 10_000 },
+  );
+  await expect.poll(async () =>
+    page.evaluate(async () => {
+      const response = await fetch("/api/state");
+      const state = await response.json();
+      return state.activeMapShards?.[0] ?? null;
+    }),
+  ).not.toBeNull();
+  const shard = await page.evaluate(async () => {
+    const response = await fetch("/api/state");
+    const state = await response.json();
+    return state.activeMapShards[0] as {
+      longitude: number;
+      latitude: number;
+    };
+  });
+
+  await context.setGeolocation({
+    longitude: shard.longitude,
+    latitude: shard.latitude,
+    accuracy: 10,
+  });
+  await expect(page.locator(".tracking-detail-label")).toContainText(
+    /等待(?:第 2 次|新的)定位确认/,
+    { timeout: 10_000 },
+  );
+  await context.setGeolocation({
+    longitude: shard.longitude + 0.00005,
+    latitude: shard.latitude,
+    accuracy: 10,
+  });
+
+  await expect(page.locator(".tracking-detail-label")).toContainText(
+    /已自动拾取记忆碎片/,
+    { timeout: 15_000 },
+  );
+  await expect(page.getByLabel("记忆碎片余额")).not.toContainText("0");
+
+  const legacyClaimStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/map/shards/claim", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        walkId: "walk-1",
+        shardId: "forged",
+        amount: 5,
+        samples: [],
+      }),
+    });
+    return response.status;
+  });
+  expect(legacyClaimStatus).toBe(400);
+
+  await page.getByRole("button", { name: "结束同行并生成回顾" }).click();
+  await expect(page.getByText("真实同行回顾")).toBeVisible();
+  await expect(page.getByText(/计步来源：GPS 距离估算/)).toBeVisible();
 });

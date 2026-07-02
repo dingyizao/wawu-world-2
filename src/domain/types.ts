@@ -33,6 +33,7 @@ export type OnboardingStage =
   | "complete";
 
 export type WalkMode = "real" | "training";
+export type StepSource = "motion" | "gps-estimate" | "training";
 export type AnchorStatus = "locked" | "discovered" | "explored";
 export type MbtiFamily = "analyst" | "diplomat" | "sentinel" | "explorer";
 
@@ -80,6 +81,14 @@ export interface WalkSession {
   status: "active" | "complete";
   startedAt: string;
   finishedAt?: string;
+  stepSource?: StepSource;
+  distanceMeters?: number;
+}
+
+export interface StepSummary {
+  source: StepSource;
+  sensorSteps: number;
+  durationMs: number;
 }
 
 export interface CityAnchor {
@@ -90,9 +99,18 @@ export interface CityAnchor {
 export interface ShardLedgerEntry {
   id: string;
   change: number;
-  reason: "walk" | "agent_action";
+  reason: "walk" | "map_shard" | "agent_action";
   actionId: string;
   createdAt: string;
+}
+
+export interface ActiveMapShard {
+  id: string;
+  amount: number;
+  label: string;
+  longitude: number;
+  latitude: number;
+  expiresAt: string;
 }
 
 export interface InventoryItem {
@@ -119,4 +137,5 @@ export interface GameStateV1 {
   inventory: InventoryItem[];
   reports: WalkReport[];
   processedActionIds: string[];
+  activeMapShards?: ActiveMapShard[];
 }

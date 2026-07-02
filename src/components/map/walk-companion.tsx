@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { CompanionSuggestion } from "./companion-suggestion";
+import type { WalkTracker } from "./use-walk-tracker";
 import { WalkRecap } from "./walk-recap";
 
 type Session = {
@@ -21,29 +22,19 @@ type Suggestion = {
 type Recap = {
   steps: number;
   training: boolean;
+  stepSource: "motion" | "gps-estimate" | "training";
 };
-
-const TRAINING_ROUTE = [
-  [104.06, 30.66],
-  [104.061, 30.661],
-  [104.062, 30.662],
-  [104.063, 30.663],
-  [104.064, 30.664],
-].map(([longitude, latitude], index) => ({
-  longitude,
-  latitude,
-  recordedAt: new Date(Date.UTC(2026, 6, 1, 1, index)).toISOString(),
-}));
 
 export function WalkCompanion({
   companionName,
   onWalletChange,
+  tracker,
 }: {
   companionName: string;
   onWalletChange: (balance: number) => void;
+  tracker: WalkTracker;
 }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [steps, setSteps] = useState(0);
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [reward, setReward] = useState<{
@@ -55,20 +46,12 @@ export function WalkCompanion({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
-    const timer = window.setInterval(() => {
-      setSteps((value) => value + (session.mode === "training" ? 24 : 1));
-    }, 1200);
-    return () => window.clearInterval(timer);
-  }, [session]);
-
   async function start(mode: Session["mode"]) {
     setBusy(true);
     setError("");
     try {
+      const firstSample =
+        mode === "real" ? await tracker.prepareRealWalk() : null;
       const response = await fetch("/api/walks/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -82,13 +65,21 @@ export function WalkCompanion({
         throw new Error(body.error ?? "WALK_START_FAILED");
       }
       setSession(body.session);
-      setSteps(mode === "training" ? 328 : 0);
+      if (mode === "real" && firstSample) {
+        tracker.beginRealWalk(body.session, firstSample);
+      } else {
+        await tracker.beginTrainingWalk(body.session);
+      }
       setSuggestion(null);
       setAccepted(false);
       setReward(null);
       setRecap(null);
     } catch {
-      setError("同行暂时无法开始，请稍后再试。");
+      setError(
+        mode === "real"
+          ? "真实同行需要位置权限；运动权限不可用时会自动改用 GPS 估算。"
+          : "同行暂时无法开始，请稍后再试。",
+      );
     } finally {
       setBusy(false);
     }
@@ -131,8 +122,7 @@ export function WalkCompanion({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           sessionId: session.id,
-          steps,
-          route: session.mode === "training" ? TRAINING_ROUTE : [],
+          ...tracker.finishPayload(),
         }),
       });
       const body = await response.json();
@@ -142,6 +132,7 @@ export function WalkCompanion({
       setRecap(body.recap);
       setEarnedShards(body.earnedShards);
       onWalletChange(body.memoryShards);
+      tracker.endWalk();
     } catch {
       setError("这次同行还没有成功结算，请重试。");
     } finally {
@@ -186,9 +177,11 @@ export function WalkCompanion({
       <WalkRecap
         earnedShards={earnedShards}
         onClose={() => {
+          tracker.endWalk();
           setSession(null);
           setRecap(null);
         }}
+        stepSource={recap.stepSource}
         steps={recap.steps}
         training={recap.training}
       />
@@ -219,8 +212,17 @@ export function WalkCompanion({
         <span className="status-chip">
           {session.mode === "training" ? "训练同行 · 非真实打卡" : "真实同行"}
         </span>
-        <strong>{steps} 步</strong>
+        <strong>{tracker.steps} 步</strong>
       </div>
+      <p className="step-source-label">
+        {tracker.stepSource === "motion"
+          ? "运动传感器计步"
+          : tracker.stepSource === "gps-estimate"
+            ? "GPS 距离估算计步"
+            : "训练模拟计步"}
+        {tracker.tracking ? " · 前台运行中" : " · 已暂停"}
+      </p>
+      <p className="tracking-detail-label">{tracker.collectionLabel}</p>
       {reward ? (
         <div className="reward-note">
           <strong>获得：{reward.name}</strong>

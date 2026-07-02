@@ -143,7 +143,7 @@ export class PostgresGameRepository implements GameRepository {
         VALUES (
           ${userId},
           ${action.id},
-          ${transaction.json(action)}
+          ${transaction.json(asJsonValue(action))}
         )
         ON CONFLICT (user_id, action_id) DO NOTHING
         RETURNING action_id
