@@ -30,6 +30,9 @@ const sample = {
 
 describe("server-owned map shards", () => {
   it("accepts location samples but rejects client-supplied reward amounts", () => {
+    expect(parseNearbyInput({ position: sample })).toEqual({
+      position: sample,
+    });
     expect(parseNearbyInput({ walkId: "walk-1", position: sample })).toEqual({
       walkId: "walk-1",
       position: sample,
@@ -57,7 +60,41 @@ describe("server-owned map shards", () => {
     ).toBeNull();
   });
 
-  it("refreshes shards only for an active walk", async () => {
+  it("refreshes display shards without an active walk", async () => {
+    const repository = new MemoryGameRepository();
+    await repository.saveInitialState("user-1", createInitialState("user-1"));
+
+    const first = await refreshMapShards(
+      repository,
+      "user-1",
+      { position: sample },
+      new Date("2026-07-03T01:00:02.000Z"),
+    );
+    const moved = await refreshMapShards(
+      repository,
+      "user-1",
+      {
+        position: {
+          ...sample,
+          longitude: 104.0702,
+          latitude: 30.5758,
+          recordedAt: "2026-07-03T01:00:06.000Z",
+        },
+      },
+      new Date("2026-07-03T01:00:07.000Z"),
+    );
+
+    expect(first.shards).toHaveLength(5);
+    expect(moved.shards).toHaveLength(5);
+    expect(moved.shards.map(({ id }) => id)).not.toEqual(
+      first.shards.map(({ id }) => id),
+    );
+    expect((await repository.getState("user-1"))?.activeMapShards).toEqual(
+      moved.shards,
+    );
+  });
+
+  it("still rejects explicit walk refresh when the walk is not active", async () => {
     const repository = new MemoryGameRepository();
     await repository.saveInitialState("user-1", createInitialState("user-1"));
 
@@ -67,6 +104,39 @@ describe("server-owned map shards", () => {
         "user-1",
         { walkId: "walk-1", position: sample },
         new Date("2026-07-03T01:00:02.000Z"),
+      ),
+    ).rejects.toThrow("WALK_NOT_ACTIVE");
+  });
+
+  it("does not allow claiming display shards before a walk starts", async () => {
+    const repository = new MemoryGameRepository();
+    await repository.saveInitialState("user-1", createInitialState("user-1"));
+    const refreshed = await refreshMapShards(
+      repository,
+      "user-1",
+      { position: sample },
+      new Date("2026-07-03T01:00:02.000Z"),
+    );
+    const shard = refreshed.shards[0];
+
+    await expect(
+      claimMapShard(
+        repository,
+        "user-1",
+        {
+          walkId: "walk-1",
+          shardId: shard.id,
+          samples: [
+            { ...sample, longitude: shard.longitude, latitude: shard.latitude },
+            {
+              ...sample,
+              longitude: shard.longitude,
+              latitude: shard.latitude,
+              recordedAt: "2026-07-03T01:00:09.000Z",
+            },
+          ],
+        },
+        new Date("2026-07-03T01:00:10.000Z"),
       ),
     ).rejects.toThrow("WALK_NOT_ACTIVE");
   });

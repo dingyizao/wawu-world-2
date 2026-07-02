@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { ResetExperienceButton } from "../account/reset-experience-button";
 import { AmapSurface } from "./amap-surface";
 import { useWalkTracker } from "./use-walk-tracker";
 import { WalkCompanion } from "./walk-companion";
@@ -32,6 +33,7 @@ export function MapWorld({
           <span>记忆碎片</span>
           <strong>{memoryShards}</strong>
         </div>
+        <ResetExperienceButton compact />
       </header>
 
       <section className="map-card" aria-label="同行地图">

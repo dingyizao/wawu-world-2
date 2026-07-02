@@ -5,6 +5,7 @@ import type { OnboardingStage } from "../domain/types";
 import {
   completeOnboarding,
   getStateResponse,
+  resetCurrentUser,
   type OnboardingInput,
 } from "./api";
 import { MemoryGameRepository } from "./repository";
@@ -28,6 +29,7 @@ class TestCookieStore implements SessionCookieStore {
       expires: Date;
     };
   }> = [];
+  readonly deletes: string[] = [];
 
   get(name: string) {
     const value = this.values.get(name);
@@ -47,6 +49,11 @@ class TestCookieStore implements SessionCookieStore {
   ) {
     this.values.set(name, value);
     this.writes.push({ name, value, options });
+  }
+
+  delete(name: string) {
+    this.values.delete(name);
+    this.deletes.push(name);
   }
 }
 
@@ -200,6 +207,51 @@ describe("state API service", () => {
     expect(result.body).toMatchObject({
       user: { id: "authenticated-user" },
       onboarding: { stage: "complete" },
+    });
+  });
+});
+
+describe("account reset API service", () => {
+  it("rejects reset without a valid session", async () => {
+    const result = await resetCurrentUser(
+      new MemoryGameRepository(),
+      new TestCookieStore(),
+    );
+
+    expect(result).toEqual({
+      status: 401,
+      body: { error: "UNAUTHORIZED" },
+    });
+  });
+
+  it("deletes the current user state and clears session cookies", async () => {
+    const repository = new MemoryGameRepository();
+    const cookies = new TestCookieStore();
+    await completeOnboarding(repository, cookies, validInput, {
+      now: new Date("2026-06-30T00:00:00.000Z"),
+      userId: "reset-user",
+    });
+
+    const result = await resetCurrentUser(repository, cookies, {
+      now: new Date("2026-07-01T00:00:00.000Z"),
+    });
+
+    expect(result).toEqual({
+      status: 200,
+      body: { ok: true, redirectTo: "/onboarding" },
+    });
+    expect(cookies.deletes).toEqual([
+      SESSION_COOKIE_NAME,
+      ONBOARDING_COOKIE_NAME,
+    ]);
+    expect(await repository.getState("reset-user")).toBeNull();
+    await expect(
+      getStateResponse(repository, cookies, {
+        now: new Date("2026-07-01T00:00:01.000Z"),
+      }),
+    ).resolves.toEqual({
+      status: 401,
+      body: { error: "UNAUTHORIZED" },
     });
   });
 });

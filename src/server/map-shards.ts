@@ -5,6 +5,8 @@ import {
 } from "../domain/map-interactions";
 import type { GameRepository } from "./repository";
 
+const SHARD_GRACE_MS = 2 * 60 * 1000;
+
 function assertFreshLocation(sample: LocationSample, now: Date) {
   const age = now.getTime() - Date.parse(sample.recordedAt);
   if (age > 60_000 || age < -10_000) {
@@ -49,15 +51,27 @@ export function parseNearbyInput(value: unknown) {
     !value ||
     typeof value !== "object" ||
     Object.keys(value).some((key) => key !== "walkId" && key !== "position") ||
-    !("walkId" in value) ||
-    typeof value.walkId !== "string" ||
-    value.walkId.trim() === "" ||
     !("position" in value)
   ) {
     return null;
   }
+  if (
+    "walkId" in value &&
+    (typeof value.walkId !== "string" || value.walkId.trim() === "")
+  ) {
+    return null;
+  }
   const position = locationSample(value.position);
-  return position ? { walkId: value.walkId, position } : null;
+  const walkId =
+    "walkId" in value && typeof value.walkId === "string"
+      ? value.walkId
+      : undefined;
+  return position
+    ? {
+        ...(walkId === undefined ? {} : { walkId }),
+        position,
+      }
+    : null;
 }
 
 export function parseClaimInput(value: unknown) {
@@ -94,16 +108,22 @@ export async function refreshMapShards(
   repository: GameRepository,
   userId: string,
   input: {
-    walkId: string;
+    walkId?: string;
     position: LocationSample;
   },
   now = new Date(),
 ) {
   const state = await repository.getState(userId);
-  const walk = state?.walks.find(
-    ({ id, status }) => id === input.walkId && status === "active",
-  );
-  if (!walk) {
+  if (!state) {
+    throw new Error("STATE_NOT_FOUND");
+  }
+  const walk =
+    input.walkId === undefined
+      ? undefined
+      : state.walks.find(
+          ({ id, status }) => id === input.walkId && status === "active",
+        );
+  if (input.walkId !== undefined && !walk) {
     throw new Error("WALK_NOT_ACTIVE");
   }
   assertFreshLocation(input.position, now);
@@ -116,9 +136,15 @@ export async function refreshMapShards(
     at: now,
   });
   const retained = (state?.activeMapShards ?? []).filter(
-    ({ expiresAt, id }) =>
-      Date.parse(expiresAt) > now.getTime() &&
-      !refresh.shards.some((shard) => shard.id === id),
+    ({ expiresAt, id }) => {
+      const expires = Date.parse(expiresAt);
+      const previousWindowRefreshAt = expires - SHARD_GRACE_MS;
+      return (
+        previousWindowRefreshAt <= now.getTime() &&
+        expires > now.getTime() &&
+        !refresh.shards.some((shard) => shard.id === id)
+      );
+    },
   );
   const shards = [...retained, ...refresh.shards];
   const result = await repository.applyAction(userId, {

@@ -27,6 +27,7 @@ export interface GameRepository {
   ): Promise<void>;
   findSession(tokenHash: string): Promise<SessionRecord | null>;
   deleteSession(tokenHash: string): Promise<void>;
+  resetUser(userId: string): Promise<void>;
 }
 
 function copyState(state: GameStateV1): GameStateV1 {
@@ -89,6 +90,15 @@ export class MemoryGameRepository implements GameRepository {
 
   async deleteSession(tokenHash: string): Promise<void> {
     this.sessions.delete(tokenHash);
+  }
+
+  async resetUser(userId: string): Promise<void> {
+    this.states.delete(userId);
+    for (const [tokenHash, session] of this.sessions) {
+      if (session.userId === userId) {
+        this.sessions.delete(tokenHash);
+      }
+    }
   }
 }
 
@@ -211,6 +221,18 @@ export class FileGameRepository implements GameRepository {
   async deleteSession(tokenHash: string): Promise<void> {
     await this.enqueue((snapshot) => {
       delete snapshot.sessions[tokenHash];
+    });
+  }
+
+  async resetUser(userId: string): Promise<void> {
+    await this.enqueue((snapshot) => {
+      delete snapshot.users[userId];
+      delete snapshot.states[userId];
+      for (const [tokenHash, session] of Object.entries(snapshot.sessions)) {
+        if (session.userId === userId) {
+          delete snapshot.sessions[tokenHash];
+        }
+      }
     });
   }
 }

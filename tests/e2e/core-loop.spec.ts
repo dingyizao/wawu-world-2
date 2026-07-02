@@ -51,6 +51,59 @@ test("new player completes the training loop into storage", async ({ page }) => 
   await expect(page.getByText("一只装着共同记忆的储物柜")).toBeVisible();
 });
 
+test("map refreshes real location shards before walking and can reset the player", async ({
+  context,
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await context.grantPermissions(["geolocation"], {
+    origin: "http://localhost:60553",
+  });
+  await context.setGeolocation({
+    longitude: 121.4737,
+    latitude: 31.2304,
+    accuracy: 12,
+  });
+  await completeOnboarding(page, "阿新");
+
+  await page.getByRole("button", { name: "刷新定位" }).click();
+  await expect(page.getByText(/已刷新到当前位置|真实定位跟随中/)).toBeVisible();
+  await expect(page.locator(".map-shard-label")).toContainText(
+    /附近碎片已刷新/,
+    { timeout: 15_000 },
+  );
+  const firstShardIds = await page.evaluate(async () => {
+    const response = await fetch("/api/state");
+    const state = await response.json();
+    return (state.activeMapShards ?? []).map((shard: { id: string }) => shard.id);
+  });
+  expect(firstShardIds).toHaveLength(5);
+
+  await context.setGeolocation({
+    longitude: 121.489,
+    latitude: 31.238,
+    accuracy: 12,
+  });
+  await page.getByRole("button", { name: "刷新定位" }).click();
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        const response = await fetch("/api/state");
+        const state = await response.json();
+        return (state.activeMapShards ?? []).map(
+          (shard: { id: string }) => shard.id,
+        );
+      }),
+    )
+    .not.toEqual(firstShardIds);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "重置体验" }).click();
+  await expect(page).toHaveURL(/onboarding/);
+  await page.goto("/map");
+  await expect(page).toHaveURL(/onboarding/);
+});
+
 test("real walk follows geolocation and automatically claims an overlapping shard", async ({
   context,
   page,

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ResetExperienceButton } from "../../components/account/reset-experience-button";
 import { MobileShell } from "../../components/mobile-shell";
 
 export default function ProfilePage() {
@@ -14,6 +15,7 @@ export default function ProfilePage() {
         <article><strong>操作账本</strong><p>每次碎片获得与消耗都有唯一动作记录。</p></article>
         <article><strong>账户恢复与导出</strong><p>完整能力将在正式版开放，本页为浅层演示。</p></article>
       </div>
+      <ResetExperienceButton />
       <div className="feature-links"><Link href="/agent">返回我的分身</Link></div>
     </MobileShell>
   );

@@ -11,6 +11,8 @@ import type { GameRepository } from "./repository";
 import {
   authenticatedUserId,
   createAuthenticatedSession,
+  ONBOARDING_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
   type SessionCookieStore,
 } from "./session";
 
@@ -27,10 +29,15 @@ export interface OnboardingInput {
 }
 
 type ErrorBody = { error: "INVALID_INPUT" | "UNAUTHORIZED" };
+type ResetBody = { ok: true; redirectTo: "/onboarding" };
 
 export type ApiResult =
   | { status: 200 | 201; body: GameStateV1 }
   | { status: 400 | 401; body: ErrorBody };
+
+export type ResetResult =
+  | { status: 200; body: ResetBody }
+  | { status: 401; body: ErrorBody };
 
 const RELATIONSHIPS = new Set<Relationship>([
   "mirror",
@@ -135,4 +142,22 @@ export async function getStateResponse(
     return { status: 401, body: { error: "UNAUTHORIZED" } };
   }
   return { status: 200, body: state };
+}
+
+export async function resetCurrentUser(
+  repository: GameRepository,
+  cookies: Pick<SessionCookieStore, "get"> & {
+    delete(name: string): void;
+  },
+  options: { now?: Date } = {},
+): Promise<ResetResult> {
+  const userId = await authenticatedUserId(repository, cookies, options);
+  if (userId === null) {
+    return { status: 401, body: { error: "UNAUTHORIZED" } };
+  }
+
+  await repository.resetUser(userId);
+  cookies.delete(SESSION_COOKIE_NAME);
+  cookies.delete(ONBOARDING_COOKIE_NAME);
+  return { status: 200, body: { ok: true, redirectTo: "/onboarding" } };
 }

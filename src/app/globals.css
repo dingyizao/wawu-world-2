@@ -532,6 +532,42 @@ p {
   font-size: 22px;
 }
 
+.reset-experience {
+  background: rgba(255, 251, 238, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.reset-experience--compact {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.reset-experience button {
+  background: rgba(182, 79, 56, 0.08);
+  border: 1px solid rgba(182, 79, 56, 0.32);
+  border-radius: 999px;
+  color: #8c2d1f;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 8px 13px;
+  width: 100%;
+}
+
+.reset-experience--compact button {
+  width: auto;
+}
+
+.reset-experience span {
+  color: #8c2d1f;
+  display: block;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 .map-card {
   background: #dfd2ae;
   border: 1px solid var(--line);
@@ -1247,6 +1283,10 @@ p {
 }
 
 @media (max-width: 560px) {
+  .world-header {
+    flex-wrap: wrap;
+  }
+
   .agent-profile-card {
     grid-template-columns: 1fr;
   }

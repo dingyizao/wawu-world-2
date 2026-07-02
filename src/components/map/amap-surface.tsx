@@ -192,6 +192,14 @@ export function AmapSurface({
     return (
       <div className="amap-wrap">
         <FallbackMap />
+        <button
+          className="map-locate-button"
+          disabled={tracker.locating}
+          onClick={() => void tracker.refreshLocation()}
+          type="button"
+        >
+          {tracker.locating ? "定位中…" : "刷新定位"}
+        </button>
         <span className="map-location-label">{tracker.locationLabel}</span>
         <span className="map-shard-label">{tracker.collectionLabel}</span>
       </div>
@@ -206,6 +214,14 @@ export function AmapSurface({
       ) : (
         <>
           <span className="map-mode-chip map-mode-chip--real">高德真实地图</span>
+          <button
+            className="map-locate-button"
+            disabled={tracker.locating}
+            onClick={() => void tracker.refreshLocation()}
+            type="button"
+          >
+            {tracker.locating ? "定位中…" : "刷新定位"}
+          </button>
           <span className="map-location-label">{tracker.locationLabel}</span>
           <span className="map-shard-label">{tracker.collectionLabel}</span>
         </>

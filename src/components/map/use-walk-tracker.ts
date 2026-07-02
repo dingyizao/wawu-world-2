@@ -62,12 +62,14 @@ export function useWalkTracker({
   const stepSourceRef = useRef<StepSource>("gps-estimate");
   const collectingRef = useRef(new Set<string>());
   const refreshAtRef = useRef(0);
+  const lastRefreshSampleRef = useRef<LocationSample | null>(null);
 
   const [latestSample, setLatestSample] = useState<LocationSample | null>(null);
   const [shards, setShards] = useState<ActiveMapShard[]>([]);
   const [steps, setStepsState] = useState(0);
   const [stepSource, setStepSource] = useState<StepSource>("gps-estimate");
   const [tracking, setTracking] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [locationLabel, setLocationLabel] = useState(
     "开始同行后，碎片会稳定刷新在附近",
   );
@@ -150,14 +152,11 @@ export function useWalkTracker({
 
   const refreshNearby = useCallback(async (sample: LocationSample) => {
     const session = sessionRef.current;
-    if (!session) {
-      return [];
-    }
     const response = await fetch("/api/map/shards/nearby", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        walkId: session.id,
+        ...(session ? { walkId: session.id } : {}),
         position: sample,
       }),
     });
@@ -168,36 +167,46 @@ export function useWalkTracker({
     shardsRef.current = body.shards;
     setShards(body.shards);
     refreshAtRef.current = Date.parse(body.refreshAt);
+    lastRefreshSampleRef.current = sample;
     setCollectionLabel("附近碎片已刷新 · 进入 25 米范围会自动拾取");
     return body.shards as ActiveMapShard[];
+  }, []);
+
+  const shouldRefreshNearby = useCallback((sample: LocationSample) => {
+    const lastRefresh = lastRefreshSampleRef.current;
+    return (
+      shardsRef.current.length === 0 ||
+      Date.now() >= refreshAtRef.current ||
+      !lastRefresh ||
+      haversineDistanceMeters(sample, lastRefresh) >= 100
+    );
   }, []);
 
   const processSample = useCallback(
     async (sample: LocationSample) => {
       const session = sessionRef.current;
-      if (!session) {
-        return;
-      }
       const nextSamples = [...samplesRef.current, sample].slice(-200);
       samplesRef.current = nextSamples;
       setLatestSample(sample);
       setLocationLabel(
-        session.mode === "training"
+        session?.mode === "training"
           ? "训练路线播放中 · 不代表真实位置"
-          : `真实定位跟随中 · 精度 ±${Math.round(sample.accuracy)} 米`,
+          : session?.mode === "real"
+            ? `真实定位跟随中 · 精度 ±${Math.round(sample.accuracy)} 米`
+            : `已刷新到当前位置 · 精度 ±${Math.round(sample.accuracy)} 米`,
       );
-      if (stepSourceRef.current === "gps-estimate") {
+      if (session && stepSourceRef.current === "gps-estimate") {
         setSteps(countGpsSteps(nextSamples).steps);
       }
-      if (
-        shardsRef.current.length === 0 ||
-        Date.now() >= refreshAtRef.current
-      ) {
+      if (shouldRefreshNearby(sample)) {
         try {
           await refreshNearby(sample);
         } catch {
           setCollectionLabel("附近碎片暂时无法刷新，同行计步仍会继续");
         }
+      }
+      if (!session) {
+        return;
       }
       for (const shard of shardsRef.current) {
         const decision = pickupDecision(nextSamples, shard);
@@ -216,7 +225,7 @@ export function useWalkTracker({
         }
       }
     },
-    [claimShard, refreshNearby, setSteps],
+    [claimShard, refreshNearby, setSteps, shouldRefreshNearby],
   );
 
   const startMotion = useCallback(() => {
@@ -334,12 +343,38 @@ export function useWalkTracker({
     return geolocationSample(firstPosition);
   }, []);
 
+  const refreshLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      setLocationLabel("当前浏览器不支持定位");
+      return;
+    }
+    setLocating(true);
+    setLocationLabel("正在刷新真实位置…");
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10_000,
+            maximumAge: 0,
+          });
+        },
+      );
+      await processSample(geolocationSample(position));
+    } catch {
+      setLocationLabel("定位刷新失败 · 请确认浏览器定位权限已开启");
+    } finally {
+      setLocating(false);
+    }
+  }, [processSample]);
+
   const beginRealWalk = useCallback(
     (session: WalkTrackerSession, firstSample: LocationSample) => {
       stopSensors();
       sessionRef.current = session;
       samplesRef.current = [];
       shardsRef.current = [];
+      lastRefreshSampleRef.current = null;
       setShards([]);
       pedometerRef.current = new MotionPedometer();
       motionEventSeenRef.current = false;
@@ -359,6 +394,7 @@ export function useWalkTracker({
       sessionRef.current = session;
       samplesRef.current = [];
       shardsRef.current = [];
+      lastRefreshSampleRef.current = null;
       setShards([]);
       startTimestampRef.current = Date.now();
       setSource("training");
@@ -403,6 +439,7 @@ export function useWalkTracker({
     sessionRef.current = null;
     setLatestSample(null);
     shardsRef.current = [];
+    lastRefreshSampleRef.current = null;
     setShards([]);
     setLocationLabel("开始同行后，碎片会稳定刷新在附近");
     setCollectionLabel("靠近碎片 25 米并连续定位两次后自动拾取");
@@ -433,8 +470,10 @@ export function useWalkTracker({
     steps,
     stepSource,
     tracking,
+    locating,
     locationLabel,
     collectionLabel,
+    refreshLocation,
     prepareRealWalk,
     beginRealWalk,
     beginTrainingWalk,

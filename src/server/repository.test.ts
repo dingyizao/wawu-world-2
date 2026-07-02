@@ -53,6 +53,29 @@ describe("MemoryGameRepository", () => {
     expect(second.state.revision).toBe(1);
     expect(second.state.wallet.memoryShards).toBe(1);
   });
+
+  it("resets one user's state and sessions", async () => {
+    const repository = new MemoryGameRepository();
+    await repository.saveInitialState("user-1", createInitialState("user-1"));
+    await repository.saveInitialState("user-2", createInitialState("user-2"));
+    await repository.createSession(
+      "user-1",
+      "token-user-1",
+      new Date("2026-07-30T00:00:00.000Z"),
+    );
+    await repository.createSession(
+      "user-2",
+      "token-user-2",
+      new Date("2026-07-30T00:00:00.000Z"),
+    );
+
+    await repository.resetUser("user-1");
+
+    expect(await repository.getState("user-1")).toBeNull();
+    expect(await repository.findSession("token-user-1")).toBeNull();
+    expect(await repository.getState("user-2")).not.toBeNull();
+    expect(await repository.findSession("token-user-2")).not.toBeNull();
+  });
 });
 
 describe("FileGameRepository", () => {
@@ -106,5 +129,30 @@ describe("FileGameRepository", () => {
     expect(plaintextToken.length).toBeGreaterThanOrEqual(43);
     expect(snapshot).not.toContain(plaintextToken);
     expect(snapshot).toContain("2026-07-30T00:00:00.000Z");
+  });
+
+  it("persists a user reset by removing state and sessions", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "wawu-repository-"));
+    temporaryDirectories.push(directory);
+    const filePath = join(directory, "state.json");
+    const first = new FileGameRepository(filePath);
+    const expiresAt = new Date("2026-07-30T00:00:00.000Z");
+
+    await first.saveInitialState("user-1", createInitialState("user-1"));
+    await first.saveInitialState("user-2", createInitialState("user-2"));
+    await first.createSession("user-1", "token-user-1", expiresAt);
+    await first.createSession("user-2", "token-user-2", expiresAt);
+    await first.resetUser("user-1");
+
+    const second = new FileGameRepository(filePath);
+
+    expect(await second.getState("user-1")).toBeNull();
+    expect(await second.findSession("token-user-1")).toBeNull();
+    expect(await second.getState("user-2")).not.toBeNull();
+    expect(await second.findSession("token-user-2")).toEqual({
+      userId: "user-2",
+      tokenHash: "token-user-2",
+      expiresAt,
+    });
   });
 });

@@ -204,6 +204,14 @@ export class PostgresGameRepository implements GameRepository {
       WHERE token_hash = ${tokenHash}
     `;
   }
+
+  async resetUser(userId: string): Promise<void> {
+    await this.ensureSchema();
+    await this.sql`
+      DELETE FROM users
+      WHERE id = ${userId}
+    `;
+  }
 }
 
 type StorageEnvironment = Record<string, string | undefined>;
